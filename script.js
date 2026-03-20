@@ -95,18 +95,17 @@ function isWorkday(dow) {
 async function ensureHolidays(year) {
   if (holidaysCache[year]) return holidaysCache[year];
   const h = {};
-  // Custom holidays first
   Object.entries(settings.customHolidays).forEach(([date, name]) => {
     if (date.startsWith(String(year))) h[date] = name;
   });
   try {
-    const subdivisionCode = currentState; // e.g. "DE-BW"
+    const subdivisionCode = currentState;
     const url = `https://openholidaysapi.org/PublicHolidays?countryIsoCode=DE&subdivisionCode=${subdivisionCode}&languageIsoCode=DE&validFrom=${year}-01-01&validTo=${year}-12-31`;
     const r = await fetch(url);
     if (r.ok) {
       const data = await r.json();
       data.forEach(entry => {
-        const date = entry.startDate; // format: "YYYY-MM-DD"
+        const date = entry.startDate;
         const name = entry.name?.find(n => n.language === 'DE')?.text
                   || entry.name?.[0]?.text
                   || 'Feiertag';
@@ -512,8 +511,17 @@ function updateStats() {
   document.getElementById('stat-net').textContent = Math.max(0, netWorkdays);
   document.getElementById('stat-basedays').textContent = baseDays;
   document.getElementById('stat-basedays-sub').textContent = `${settings.hoursPerWeek}h ÷ 5 Tage/Woche`;
-  document.getElementById('stat-office').innerHTML = 
-    `<span style="color:var(--office)">${stats.attended}</span> / ${officePflicht}`;
+
+  // ── Office-Card: Status-Klasse setzen ──────────────────────────────────────
+  const officeCard = document.getElementById('stat-office').closest('.stat-card');
+  if (officeCard) {
+    officeCard.classList.remove('status-ok', 'status-warn');
+    if (officePflicht > 0) {
+      officeCard.classList.add(stats.attended >= officePflicht ? 'status-ok' : 'status-warn');
+    }
+  }
+  document.getElementById('stat-office').innerHTML =
+    `<span>${stats.attended}</span> / ${officePflicht}`;
 }
 
 function renderHolidayList() {

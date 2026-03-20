@@ -175,27 +175,58 @@ body {
   font-family: var(--font-body);
 }
 
+/* Highlight card — dezent, status-abhängig eingefärbt */
 .stat-card.highlight {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--surface);
+  border-color: var(--border2);
 }
 .stat-card.highlight::before {
-  background: rgba(255,255,255,0.3);
+  background: var(--border2);
 }
-.stat-card.highlight .stat-value { 
-  color: #fff; 
-  font-weight: 600; 
+.stat-card.highlight .stat-value {
+  color: var(--text);
+  font-weight: 600;
 }
-.stat-card.highlight .stat-label { 
-  color: rgba(255,255,255,0.75); 
+.stat-card.highlight .stat-label {
+  color: var(--text-dim);
 }
 .stat-card.highlight .stat-sub {
-  color: rgba(255,255,255,0.6);
+  color: var(--text-dim);
 }
 .stat-card.highlight:hover {
-  background: var(--accent2);
-  border-color: var(--accent2);
   transform: translateY(-1px);
+}
+
+/* Status: Pflicht erfüllt → dezent grün */
+.stat-card.highlight.status-ok {
+  background: #f0faf3;
+  border-color: #86efac;
+}
+.stat-card.highlight.status-ok::before {
+  background: #4ade80;
+}
+.stat-card.highlight.status-ok .stat-label {
+  color: #166534;
+}
+.stat-card.highlight.status-ok .stat-sub {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+/* Status: Pflicht nicht erfüllt → dezent rot */
+.stat-card.highlight.status-warn {
+  background: #fff8f7;
+  border-color: #fca5a5;
+}
+.stat-card.highlight.status-warn::before {
+  background: #f87171;
+}
+.stat-card.highlight.status-warn .stat-label {
+  color: #991b1b;
+}
+.stat-card.highlight.status-warn .stat-sub {
+  color: #f87171;
+  font-weight: 600;
 }
 
 /* === MAIN LAYOUT === */
