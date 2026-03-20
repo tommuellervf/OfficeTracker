@@ -580,10 +580,8 @@ body {
   background: var(--note-bg);
 }
 
-.day-row.is-today {
-  box-shadow: inset 0 0 0 1px rgba(26,107,60,0.2);
-  background: #f2faf5;
-}
+.day-row.is-today
+
 /* Wenn heute + Eintrag: Eintrag-Farbe gewinnt, accent-Border bleibt als Heute-Signal */
 .day-row.is-today.office-day   { background: var(--office-bg); }
 .day-row.is-today.vacation-day { background: var(--vacation-bg); }
@@ -596,10 +594,8 @@ body {
 .day-row.is-today.sick-day,
 .day-row.is-today.other-day,
 .day-row.is-today.note-day,
-.day-row.is-today.split-note {
-  border-left: 4px solid var(--accent);
-  box-shadow: inset 0 0 0 1px rgba(26,107,60,0.25);
-}
+.day-row.is-today.split-note,
+
 .day-row.is-today .day-num-big { 
   color: var(--accent); 
   font-weight: 700; 
