@@ -40,6 +40,9 @@
   --other:        #5b21b6;
   --other-bg:     #ede9fe;
   --other-border: #c4b5fd;
+  --note:         #713f12;
+  --note-bg:      #fef9c3;
+  --note-border:  #fcd34d;
 
   --radius: 10px;
   --shadow: 0 4px 16px rgba(0,0,0,0.07);
@@ -559,19 +562,22 @@ body {
 
 .day-row.office-day {
   background: var(--office-bg);
-  border-left: 4px solid var(--office-border);
 }
 .day-row.vacation-day {
   background: var(--vacation-bg);
-  border-left: 4px solid var(--vacation-border);
 }
 .day-row.sick-day {
   background: var(--sick-bg);
-  border-left: 4px solid var(--sick-border);
 }
 .day-row.other-day {
   background: var(--other-bg);
-  border-left: 4px solid var(--other-border);
+}
+.day-row.note-day {
+  background: var(--note-bg);
+}
+/* Solo-Notiz: Zeile gelb */
+.day-row.note-day {
+  background: var(--note-bg);
 }
 
 .day-row.is-today {
@@ -583,10 +589,14 @@ body {
 .day-row.is-today.vacation-day { background: var(--vacation-bg); }
 .day-row.is-today.sick-day     { background: var(--sick-bg); }
 .day-row.is-today.other-day    { background: var(--other-bg); }
+.day-row.is-today.note-day     { background: var(--note-bg); }
+.day-row.is-today.split-note   { /* background kommt von office-day/sick-day etc */ }
 .day-row.is-today.office-day,
 .day-row.is-today.vacation-day,
 .day-row.is-today.sick-day,
-.day-row.is-today.other-day {
+.day-row.is-today.other-day,
+.day-row.is-today.note-day,
+.day-row.is-today.split-note {
   border-left: 4px solid var(--accent);
   box-shadow: inset 0 0 0 1px rgba(26,107,60,0.25);
 }
@@ -594,19 +604,18 @@ body {
   color: var(--accent); 
   font-weight: 700; 
 }
-.day-row.is-today .kw-cell {
-  background: var(--accent-light);
-}
-
 .kw-cell {
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-mono);
   font-size: 9px; 
   color: var(--text-dim);
   border-right: 1px solid #e8eee8;
-  background: #f7f9f7;
+  background: #f7f9f7 !important;
   height: 100%;
   letter-spacing: 0.02em;
+}
+.day-row.is-today .kw-cell {
+  background: var(--accent-light) !important;
 }
 
 .day-cell {
@@ -632,8 +641,8 @@ body {
 
 .absence-cell {
   position: relative; display: flex; align-items: center;
-  padding: 0 8px;
   height: 100%;
+  overflow: hidden;
 }
 
 /* === ABSENCE BLOCKS === */
@@ -645,15 +654,85 @@ body {
   border-radius: 5px;
   width: 100%; 
   line-height: 1; 
-  height: 26px;
+  height: 22px;
   font-family: var(--font-body);
 }
 
 .ab-block.vacation { color: var(--vacation); }
 .ab-block.sick     { color: var(--sick); }
-.ab-block.holiday  { background: var(--holiday-bg); border: 1px solid var(--holiday-border); color: var(--holiday); }
+.ab-block.holiday  { background: var(--holiday-bg); border: 1px solid var(--holiday-border); color: var(--holiday); margin: 10px; }
 .ab-block.office   { color: var(--office); }
 .ab-block.other    { color: var(--other); }
+
+/* Im Split: Eintrags-Blöcke transparent (Zeilenfarbe scheint durch), nur Notiz bekommt eigene Farbe */
+.absence-cell.has-note .ab-block.vacation,
+.absence-cell.has-note .ab-block.sick,
+.absence-cell.has-note .ab-block.office,
+.absence-cell.has-note .ab-block.other    { background: transparent; }
+.absence-cell.has-note .ab-block.holiday  { background: var(--holiday-bg); }
+.absence-cell.has-note .ab-block.note     { background: var(--note-bg); }
+
+/* === NOTE === */
+.ab-block.note {
+  color: var(--note, #713f12);
+  background: var(--note-bg, #fef9c3);
+  border: 1px solid var(--note-border, #fcd34d);
+}
+.ab-block.note .note-label-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--note-border, #d97706);
+  color: var(--note, #713f12);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  outline: none;
+  cursor: text;
+  padding: 0;
+  width: 100%;
+  min-width: 0;
+}
+.ab-block.note .note-label-input::placeholder { opacity: 0.45; }
+
+/* === SPLIT: beide Hälften nahtlos, volle Zeilenhöhe === */
+.absence-cell.has-note {
+  padding: 0;
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+}
+/* Alle Blöcke im Split außer holiday: kein Border, kein Radius, volle Höhe */
+.absence-cell.has-note .ab-block.vacation,
+.absence-cell.has-note .ab-block.sick,
+.absence-cell.has-note .ab-block.office,
+.absence-cell.has-note .ab-block.other,
+.absence-cell.has-note .ab-block.note {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  align-self: stretch;
+  border-radius: 0;
+  border: none;
+  border-right: 1px solid rgba(0,0,0,0.07);
+}
+.absence-cell.has-note .ab-block.note {
+  border-right: none;
+  background: var(--note-bg);
+  color: var(--note);
+}
+/* Holiday im Split: originaler Stil, zentriert, mit Abstand links und rechts */
+.absence-cell.has-note .ab-block.holiday {
+  flex: 1;
+  min-width: 0;
+  align-self: center;
+  margin: 0 4px 0 8px;
+}
+
+/* Solo-Notiz: kein Border, kein Background — kommt von der Zeile */
+.absence-cell.note-only .ab-block.note {
+  border: none;
+  background: transparent;
+}
 
 .ab-label { font-weight: 600; letter-spacing: 0.01em; }
 
@@ -676,7 +755,7 @@ body {
 .ab-controls { display: flex; align-items: center; gap: 3px; }
 
 .ctrl-btn {
-  width: 20px; height: 20px; border-radius: 50%;
+  width: 20px; height: 25px; border-radius: 50%;
   border: 1px solid currentColor;
   background: rgba(0,0,0,0.06); 
   cursor: pointer;
@@ -747,6 +826,7 @@ body {
 .drag-chip.sick     { background: var(--sick-bg);     border-color: var(--sick-border);     color: var(--sick); }
 .drag-chip.office   { background: var(--office-bg);   border-color: var(--office-border);   color: var(--office); }
 .drag-chip.other    { background: var(--other-bg);    border-color: var(--other-border);    color: var(--other); }
+.drag-chip.note     { background: #fef9c3;             border-color: #fcd34d;                color: #713f12; }
 .drag-chip:hover { 
   transform: translateX(2px); 
   filter: brightness(0.95);

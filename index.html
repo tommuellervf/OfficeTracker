@@ -106,6 +106,8 @@
         <div class="drag-chip vacation" draggable="true" data-type="vacation" id="chip-vacation">🌴 Urlaub</div>
         <div class="drag-chip sick"     draggable="true" data-type="sick"     id="chip-sick">😷 Krank</div>
         <div class="drag-chip other"    draggable="true" data-type="other"    id="chip-other">📋 Sonstige Abwesenheit</div>
+        <div style="height:1px;background:var(--border);margin:2px 0;"></div>
+        <div class="drag-chip note"     draggable="true" data-type="note"     id="chip-note">📌 Notiz</div>
       </div>
     </div>
 
@@ -120,6 +122,7 @@
       + / − verlängert / kürzt (auch über Monate).<br>
       ✕ löscht Block.<br>
       „Im Office" markiert tatsächliche Bürotage.<br>
+      📌 Notiz ist auf jedem Tag droppbar.<br>
       Alles wird gespeichert.
     </div>
 
@@ -219,6 +222,12 @@
                 <div class="color-item"><span>Textfarbe</span><input type="color" id="color-other" value="#7c3aed" class="color-input"></div>
                 <div class="color-item"><span>Hintergrund</span><input type="color" id="color-other-bg" value="#ede9fe" class="color-input"></div>
                 <div class="color-item"><span>Rand</span><input type="color" id="color-other-border" value="#c4b5fd" class="color-input"></div>
+              </div>
+              <div class="color-card">
+                <div class="color-card-header">📌 Notiz</div>
+                <div class="color-item"><span>Textfarbe</span><input type="color" id="color-note" value="#713f12" class="color-input"></div>
+                <div class="color-item"><span>Hintergrund</span><input type="color" id="color-note-bg" value="#fef9c3" class="color-input"></div>
+                <div class="color-item"><span>Rand</span><input type="color" id="color-note-border" value="#fcd34d" class="color-input"></div>
               </div>
               <div class="color-card">
                 <div class="color-card-header">🖌️ Basis</div>

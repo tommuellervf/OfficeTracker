@@ -27,6 +27,9 @@ let settings = {
     other: '#7c3aed',
     'other-bg': '#ede9fe',
     'other-border': '#c4b5fd',
+    note: '#713f12',
+    'note-bg': '#fef9c3',
+    'note-border': '#fcd34d',
     bg: '#eef4fd'
   }
 };
@@ -85,6 +88,9 @@ function applyCustomColors() {
   root.style.setProperty('--other', settings.colors.other || '#7c3aed');
   root.style.setProperty('--other-bg', settings.colors['other-bg'] || '#ede9fe');
   root.style.setProperty('--other-border', settings.colors['other-border'] || '#c4b5fd');
+  root.style.setProperty('--note', settings.colors.note || '#713f12');
+  root.style.setProperty('--note-bg', settings.colors['note-bg'] || '#fef9c3');
+  root.style.setProperty('--note-border', settings.colors['note-border'] || '#fcd34d');
   root.style.setProperty('--bg', settings.colors.bg);
 }
 
@@ -169,6 +175,7 @@ function renderMonth() {
     const isToday = dateStr === todayStr && isCurrentMonth;
     const hol = !!holidaysCache[curYear]?.[dateStr];
     const absInfo = getAbsInfo(dateStr);
+    const noteInfo = getNoteInfo(dateStr);
     const isOffice = absInfo && absInfo.ab.type === 'office';
     const isOther  = absInfo && absInfo.ab.type === 'other';
     const isVacation = absInfo && absInfo.ab.type === 'vacation';
@@ -177,15 +184,38 @@ function renderMonth() {
     const showKW = isWork && kw !== lastKW;
     if(isWork) lastKW = kw;
 
+    const hasNote = !!noteInfo;
+    const isSplitDay = hasNote && (hol || !!absInfo);
+
+    // CSS-Variablen für Split-Gradient setzen
+    let splitBg = 'white', splitBorder = 'var(--border2)';
+    if (isSplitDay) {
+      if (absInfo) {
+        const t = absInfo.ab.type;
+        if (t === 'office')   { splitBg = 'var(--office-bg)';   splitBorder = 'var(--office-border)'; }
+        if (t === 'vacation') { splitBg = 'var(--vacation-bg)'; splitBorder = 'var(--vacation-border)'; }
+        if (t === 'sick')     { splitBg = 'var(--sick-bg)';     splitBorder = 'var(--sick-border)'; }
+        if (t === 'other')    { splitBg = 'var(--other-bg)';    splitBorder = 'var(--other-border)'; }
+      } else if (hol) {
+        splitBg = 'var(--holiday-bg)'; splitBorder = 'var(--holiday-border)';
+      }
+    }
+
     const row = document.createElement('div');
     row.className = 'day-row'
       + (isWE ? ' weekend' : '')
       + (isToday ? ' is-today' : '')
-      + (isOffice ? ' office-day' : '')
-      + (isVacation ? ' vacation-day' : '')
-      + (isSick ? ' sick-day' : '')
-      + (isOther ? ' other-day' : '')
-      + (isWork && !hol && !absInfo ? ' droppable' : '');
+      + (!hasNote && isOffice ? ' office-day' : '')
+      + (!hasNote && isVacation ? ' vacation-day' : '')
+      + (!hasNote && isSick ? ' sick-day' : '')
+      + (!hasNote && isOther ? ' other-day' : '')
+      + (isSplitDay && isOffice ? ' office-day split-note' : '')
+      + (isSplitDay && isVacation ? ' vacation-day split-note' : '')
+      + (isSplitDay && isSick ? ' sick-day split-note' : '')
+      + (isSplitDay && isOther ? ' other-day split-note' : '')
+      + (isSplitDay && hol ? ' split-note' : '')
+      + (!isSplitDay && hasNote ? ' note-day' : '')
+      + (isWork && !hol && !absInfo && !hasNote ? ' droppable' : '');
     row.dataset.date = dateStr;
 
     const kwCell = document.createElement('div');
@@ -199,17 +229,30 @@ function renderMonth() {
     const absCell = document.createElement('div');
     absCell.className = 'absence-cell';
 
-    if(hol) {
+    if (hol) {
+      // Feiertag: volle Breite, oder 50/50 split mit Notiz
       const bl = document.createElement('div');
-      bl.className = 'ab-block holiday pos-single';
+      bl.className = 'ab-block holiday';
       bl.innerHTML = `<span class="ab-label">🎉 ${holidaysCache[curYear][dateStr]}</span>`;
-      absCell.appendChild(bl);
-    } else if(absInfo) {
+      if (hasNote) {
+        absCell.classList.add('has-note');
+        absCell.appendChild(bl);
+        absCell.appendChild(buildNoteBlock(noteInfo, true));
+      } else {
+        absCell.appendChild(bl);
+        absCell.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+        absCell.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+        absCell.addEventListener('drop', e => {
+          e.preventDefault(); row.classList.remove('drag-over');
+          if(e.dataTransfer.getData('type') === 'note') addNote(dateStr);
+        });
+      }
+    } else if (absInfo) {
+      // Normaler Eintrag: volle Breite, oder 50/50 split mit Notiz
       const {ab, idx} = absInfo;
       const total = ab.dates.length;
       const bl = document.createElement('div');
       bl.className = `ab-block ${ab.type}`;
-
       const emoji = ab.type==='vacation' ? '🌴' : ab.type==='sick' ? '😷' : ab.type==='office' ? '🏢' : '📋';
       const label = ab.type==='vacation' ? 'Urlaub' : ab.type==='sick' ? 'Krank' : ab.type==='office' ? 'Im Office' : (ab.customLabel || 'Sonstige Abw.');
       const labelHtml = ab.type === 'other'
@@ -226,7 +269,23 @@ function renderMonth() {
           <button class="ctrl-btn btn-plus" data-id="${ab.id}">+</button>
           <button class="ctrl-del btn-del" data-id="${ab.id}" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;"><svg width="10" height="10" viewBox="0 0 14 14" fill="none"><path d="M1 1L13 13M1 13L13 1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
         </div>` : ''}`;
-      absCell.appendChild(bl);
+      if (hasNote) {
+        absCell.classList.add('has-note');
+        absCell.appendChild(bl);
+        absCell.appendChild(buildNoteBlock(noteInfo, true));
+      } else {
+        absCell.appendChild(bl);
+        absCell.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+        absCell.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+        absCell.addEventListener('drop', e => {
+          e.preventDefault(); row.classList.remove('drag-over');
+          if(e.dataTransfer.getData('type') === 'note') addNote(dateStr);
+        });
+      }
+    } else if (hasNote) {
+      // Nur Notiz, kein anderer Eintrag — volle Breite
+      absCell.classList.add('note-only');
+      absCell.appendChild(buildNoteBlock(noteInfo, false));
     }
 
     row.appendChild(kwCell);
@@ -234,6 +293,7 @@ function renderMonth() {
     row.appendChild(absCell);
     body.appendChild(row);
 
+    // Normale droppable Tage (kein Eintrag, kein Feiertag)
     if(isWork && !hol && !absInfo) {
       row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
       row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
@@ -241,7 +301,17 @@ function renderMonth() {
         e.preventDefault();
         row.classList.remove('drag-over');
         const type = e.dataTransfer.getData('type');
-        if(type) addEntry(type, dateStr);
+        if(type === 'note') addNote(dateStr);
+        else if(type) addEntry(type, dateStr);
+      });
+    }
+    // Wochenenden als drop-target für Notizen (nur wenn noch keine Notiz)
+    if(isWE && !hasNote) {
+      row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+      row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+      row.addEventListener('drop', e => {
+        e.preventDefault(); row.classList.remove('drag-over');
+        if(e.dataTransfer.getData('type') === 'note') addNote(dateStr);
       });
     }
   }
@@ -383,10 +453,86 @@ async function addEntry(type, startDate) {
 function getAbsInfo(dateStr) {
   for(const ab of absences){
     const idx = ab.dates.indexOf(dateStr);
-    if(idx !== -1) return {ab, idx};
+    if(idx !== -1 && ab.type !== 'note') return {ab, idx};
   }
   return null;
 }
+
+function getNoteInfo(dateStr) {
+  for(const ab of absences){
+    if(ab.type === 'note') {
+      const idx = ab.dates.indexOf(dateStr);
+      if(idx !== -1) return {ab, idx};
+    }
+  }
+  return null;
+}
+
+async function addNote(dateStr) {
+  if(getNoteInfo(dateStr)) return;
+  absences.push({ id: 'ab_'+Date.now(), type: 'note', dates: [dateStr], customLabel: '' });
+  saveData();
+  renderMonth();
+  updateStats();
+}
+
+function deleteNote(id) {
+  absences = absences.filter(a => a.id !== id);
+  saveData();
+  renderMonth();
+  updateStats();
+}
+
+async function extendNote(id, delta) {
+  const ab = absences.find(a => a.id === id);
+  if (!ab) return;
+  if (delta > 0) {
+    let last = ab.dates[ab.dates.length - 1];
+    let [y, m, d] = last.split('-').map(Number);
+    let cursor = new Date(y, m - 1, d + 1);
+    const existingNotes = new Set(absences.filter(a => a.type === 'note' && a.id !== id).flatMap(a => a.dates));
+    for (let i = 0; i < MAX_FUTURE_DAYS; i++) {
+      const dStr = mkDate(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+      if (!existingNotes.has(dStr)) {
+        ab.dates.push(dStr);
+        ab.dates.sort((a, b) => a.localeCompare(b));
+        break;
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  } else {
+    if (ab.dates.length <= 1) {
+      absences = absences.filter(a => a.id !== id);
+    } else {
+      ab.dates.sort((a, b) => a.localeCompare(b));
+      ab.dates.pop();
+    }
+  }
+  saveData();
+  renderMonth();
+  updateStats();
+}
+
+function buildNoteBlock(noteInfo, hasOtherEntry) {
+  const {ab, idx} = noteInfo;
+  const total = ab.dates.length;
+  const bl = document.createElement('div');
+  bl.className = 'ab-block note' + (hasOtherEntry ? ' note-split' : '');
+  bl.innerHTML = `
+    ${idx === 0
+      ? `<input class="ab-label-input note-label-input" data-note-id="${ab.id}" value="${(ab.customLabel||'').replace(/"/g,'&quot;')}" placeholder="Notiz…">`
+      : `<span class="ab-label" style="opacity:0.6;font-size:10px;">${ab.customLabel || 'Notiz'}</span>`
+    }
+    ${idx === 0 ? `
+    <div class="ab-controls">
+      <button class="ctrl-btn btn-note-minus" data-note-id="${ab.id}">−</button>
+      <span class="ab-day-count">${total}d</span>
+      <button class="ctrl-btn btn-note-plus" data-note-id="${ab.id}">+</button>
+      <button class="ctrl-del btn-note-del" data-note-id="${ab.id}" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;"><svg width="10" height="10" viewBox="0 0 14 14" fill="none"><path d="M1 1L13 13M1 13L13 1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>` : ''}`;
+  return bl;
+}
+
 
 function getWeekNum(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -397,7 +543,7 @@ function getWeekNum(date) {
 
 async function computeDates(startDate, numDays) {
   const [sy,sm,sd] = startDate.split('-').map(Number);
-  const existing = new Set(absences.flatMap(a => a.dates));
+  const existing = new Set(absences.filter(a => a.type !== 'note').flatMap(a => a.dates));
   const result = [];
   let cursor = new Date(sy, sm-1, sd);
   let added = 0;
@@ -435,7 +581,7 @@ async function extendAbsence(id, delta) {
     let [y, m, d] = last.split('-').map(Number);
     let cursor = new Date(y, m - 1, d + 1);
 
-    const existing = new Set(absences.flatMap(a => a.dates));
+    const existing = new Set(absences.filter(a => a.type !== 'note').flatMap(a => a.dates));
 
     for (let i = 0; i < MAX_FUTURE_DAYS; i++) {
       const dow = cursor.getDay();
@@ -470,7 +616,7 @@ async function extendAbsence(id, delta) {
 }
 
 function deleteAbsence(id) {
-  absences = absences.filter(a => a.id !== id);
+  absences = absences.filter(a => a.id !== id || a.type === 'note');
   saveData();
   renderMonth();
   updateStats();
@@ -548,8 +694,8 @@ function escapeHtml(str) {
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const VALID_TYPES = ['vacation', 'sick', 'office', 'other'];
-const COLOR_KEYS = ['accent', 'vacation', 'vacation-bg', 'vacation-border', 'sick', 'sick-bg', 'sick-border', 'holiday', 'holiday-bg', 'holiday-border', 'office', 'office-bg', 'office-border', 'other', 'other-bg', 'other-border', 'bg'];
+const VALID_TYPES = ['vacation', 'sick', 'office', 'other', 'note'];
+const COLOR_KEYS = ['accent', 'vacation', 'vacation-bg', 'vacation-border', 'sick', 'sick-bg', 'sick-border', 'holiday', 'holiday-bg', 'holiday-border', 'office', 'office-bg', 'office-border', 'other', 'other-bg', 'other-border', 'note', 'note-bg', 'note-border', 'bg'];
 
 function validateImport(data) {
   if (typeof data !== 'object' || data === null) throw new Error('Ungültiges Format');
@@ -643,6 +789,7 @@ function initDragDrop() {
   document.getElementById('chip-sick').addEventListener('dragstart', e => e.dataTransfer.setData('type', 'sick'));
   document.getElementById('chip-office').addEventListener('dragstart', e => e.dataTransfer.setData('type', 'office'));
   document.getElementById('chip-other').addEventListener('dragstart', e => e.dataTransfer.setData('type', 'other'));
+  document.getElementById('chip-note')?.addEventListener('dragstart', e => e.dataTransfer.setData('type', 'note'));
 
   document.getElementById('cal-body').addEventListener('click', async e => {
     const btn = e.target.closest('[data-id]');
@@ -652,6 +799,14 @@ function initDragDrop() {
       if (btn.classList.contains('btn-minus')) await extendAbsence(id, -1);
       if (btn.classList.contains('btn-del'))   deleteAbsence(id);
     }
+    // Notiz löschen
+    const noteBtn = e.target.closest('[data-note-id]');
+    if (noteBtn) {
+      const nid = noteBtn.dataset.noteId;
+      if (noteBtn.classList.contains('btn-note-del'))   deleteNote(nid);
+      if (noteBtn.classList.contains('btn-note-plus'))  await extendNote(nid, 1);
+      if (noteBtn.classList.contains('btn-note-minus')) await extendNote(nid, -1);
+    }
   });
 
   document.getElementById('cal-body').addEventListener('change', e => {
@@ -660,9 +815,14 @@ function initDragDrop() {
       const ab = absences.find(a => a.id === id);
       if (ab) { ab.customLabel = e.target.value.trim(); saveData(); renderMonth(); }
     }
+    if (e.target.classList.contains('note-label-input')) {
+      const id = e.target.dataset.noteId;
+      const ab = absences.find(a => a.id === id);
+      if (ab) { ab.customLabel = e.target.value.trim(); saveData(); renderMonth(); }
+    }
   });
   document.getElementById('cal-body').addEventListener('keydown', e => {
-    if (e.target.classList.contains('ab-label-input') && e.key === 'Enter') {
+    if ((e.target.classList.contains('ab-label-input') || e.target.classList.contains('note-label-input')) && e.key === 'Enter') {
       e.target.blur();
     }
   });
