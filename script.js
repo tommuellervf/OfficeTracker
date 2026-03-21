@@ -39,6 +39,11 @@ const DEFAULT_COLORS = JSON.parse(JSON.stringify(settings.colors));
 const pad = n => String(n).padStart(2,'0');
 const mkDate = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
 
+// ── Vollzeit-Sonderregel: ab 35h immer 8 Tage, darunter proportional ────────
+function calcBaseDays() {
+  return settings.hoursPerWeek >= 35 ? 8 : Math.round(settings.hoursPerWeek / 5);
+}
+
 function saveData() {
   localStorage.setItem('officeTracker', JSON.stringify({
     absences,
@@ -187,7 +192,6 @@ function renderMonth() {
     const hasNote = !!noteInfo;
     const isSplitDay = hasNote && (hol || !!absInfo);
 
-    // CSS-Variablen für Split-Gradient setzen
     let splitBg = 'white', splitBorder = 'var(--border2)';
     if (isSplitDay) {
       if (absInfo) {
@@ -230,7 +234,6 @@ function renderMonth() {
     absCell.className = 'absence-cell';
 
     if (hol) {
-      // Feiertag: volle Breite, oder 50/50 split mit Notiz
       const bl = document.createElement('div');
       bl.className = 'ab-block holiday';
       bl.innerHTML = `<span class="ab-label">🎉 ${holidaysCache[curYear][dateStr]}</span>`;
@@ -248,7 +251,6 @@ function renderMonth() {
         });
       }
     } else if (absInfo) {
-      // Normaler Eintrag: volle Breite, oder 50/50 split mit Notiz
       const {ab, idx} = absInfo;
       const total = ab.dates.length;
       const bl = document.createElement('div');
@@ -283,7 +285,6 @@ function renderMonth() {
         });
       }
     } else if (hasNote) {
-      // Nur Notiz, kein anderer Eintrag — volle Breite
       absCell.classList.add('note-only');
       absCell.appendChild(buildNoteBlock(noteInfo, false));
     }
@@ -293,7 +294,6 @@ function renderMonth() {
     row.appendChild(absCell);
     body.appendChild(row);
 
-    // Normale droppable Tage (kein Eintrag, kein Feiertag)
     if(isWork && !hol && !absInfo) {
       row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
       row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
@@ -305,7 +305,6 @@ function renderMonth() {
         else if(type) addEntry(type, dateStr);
       });
     }
-    // Wochenenden als drop-target für Notizen (nur wenn noch keine Notiz)
     if(isWE && !hasNote) {
       row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
       row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
@@ -328,7 +327,7 @@ async function renderYearOverview() {
   const now = new Date();
   const todayMonth = now.getMonth();
   const todayYear = now.getFullYear();
-  const baseDays = Math.round(settings.hoursPerWeek / 5);
+  const baseDays = calcBaseDays(); // ← Vollzeit-Sonderregel
 
   for (let m = 0; m < 12; m++) {
     const prefix = `${curYear}-${pad(m+1)}-`;
@@ -533,7 +532,6 @@ function buildNoteBlock(noteInfo, hasOtherEntry) {
   return bl;
 }
 
-
 function getWeekNum(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
@@ -646,7 +644,7 @@ function updateStats() {
 
   const allAbs = stats.absCount;
   const netWorkdays = workdays - holidayCount - stats.absCount;
-  const baseDays = Math.round(settings.hoursPerWeek / 5);
+  const baseDays = calcBaseDays(); // ← Vollzeit-Sonderregel
   const effectiveWorkdays = workdays - holidayCount;
   const raw = effectiveWorkdays === 0 ? baseDays : baseDays - (allAbs * (baseDays / effectiveWorkdays));
   const officePflicht = Math.round(Math.max(0, raw));
@@ -656,9 +654,10 @@ function updateStats() {
   document.getElementById('stat-absences').textContent = stats.absCount;
   document.getElementById('stat-net').textContent = Math.max(0, netWorkdays);
   document.getElementById('stat-basedays').textContent = baseDays;
-  document.getElementById('stat-basedays-sub').textContent = `${settings.hoursPerWeek}h ÷ 5 Tage/Woche`;
+  document.getElementById('stat-basedays-sub').textContent = settings.hoursPerWeek >= 35
+    ? `${settings.hoursPerWeek}h/Woche (Vollzeit = 8)`
+    : `${settings.hoursPerWeek}h ÷ 5 Tage/Woche`;
 
-  // ── Office-Card: Status-Klasse setzen ──────────────────────────────────────
   const officeCard = document.getElementById('stat-office').closest('.stat-card');
   if (officeCard) {
     officeCard.classList.remove('status-ok', 'status-warn');
@@ -799,7 +798,6 @@ function initDragDrop() {
       if (btn.classList.contains('btn-minus')) await extendAbsence(id, -1);
       if (btn.classList.contains('btn-del'))   deleteAbsence(id);
     }
-    // Notiz löschen
     const noteBtn = e.target.closest('[data-note-id]');
     if (noteBtn) {
       const nid = noteBtn.dataset.noteId;
