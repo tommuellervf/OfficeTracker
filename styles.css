@@ -1,13 +1,6 @@
 /* === Fonts === */
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300&family=DM+Sans:wght@400;500;600&display=swap');
 
-@font-face { font-family: 'Syne'; src: url('fonts/syne-v24-latin-regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
-@font-face { font-family: 'Syne'; src: url('fonts/syne-v24-latin-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
-@font-face { font-family: 'Syne'; src: url('fonts/syne-v24-latin-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
-@font-face { font-family: 'Syne'; src: url('fonts/syne-v24-latin-700.woff2') format('woff2'); font-weight: 700; font-display: swap; }
-@font-face { font-family: 'JetBrains Mono'; src: url('fonts/jetbrains-mono-v24-latin-regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
-@font-face { font-family: 'JetBrains Mono'; src: url('fonts/jetbrains-mono-v24-latin-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
-
 /* === CSS-Variablen & Reset === */
 :root {
   --bg:        #f0f4f0;
@@ -48,12 +41,12 @@
   --shadow: 0 4px 16px rgba(0,0,0,0.07);
   --shadow-md: 0 8px 32px rgba(0,0,0,0.1);
 
-  --font-display: 'Fraunces', 'Syne', serif;
-  --font-body: 'DM Sans', 'Syne', sans-serif;
-  --font-mono: 'DM Mono', 'JetBrains Mono', monospace;
+  --font-display: 'Fraunces', serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', monospace;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: var(--font-body);
@@ -61,6 +54,8 @@ body {
   color: var(--text);
   min-height: 100vh;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background-image: 
     radial-gradient(ellipse 120% 60% at 80% -20%, rgba(26,107,60,0.06) 0%, transparent 60%),
     radial-gradient(ellipse 60% 40% at 10% 80%, rgba(26,107,60,0.04) 0%, transparent 50%);
@@ -575,27 +570,13 @@ body {
 .day-row.note-day {
   background: var(--note-bg);
 }
-/* Solo-Notiz: Zeile gelb */
-.day-row.note-day {
-  background: var(--note-bg);
-}
 
-.day-row.is-today
-
-/* Wenn heute + Eintrag: Eintrag-Farbe gewinnt, accent-Border bleibt als Heute-Signal */
 .day-row.is-today.office-day   { background: var(--office-bg); }
 .day-row.is-today.vacation-day { background: var(--vacation-bg); }
 .day-row.is-today.sick-day     { background: var(--sick-bg); }
 .day-row.is-today.other-day    { background: var(--other-bg); }
 .day-row.is-today.note-day     { background: var(--note-bg); }
 .day-row.is-today.split-note   { /* background kommt von office-day/sick-day etc */ }
-.day-row.is-today.office-day,
-.day-row.is-today.vacation-day,
-.day-row.is-today.sick-day,
-.day-row.is-today.other-day,
-.day-row.is-today.note-day,
-.day-row.is-today.split-note,
-
 .day-row.is-today .day-num-big { 
   color: var(--accent); 
   font-weight: 700; 
