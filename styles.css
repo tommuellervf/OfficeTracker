@@ -551,7 +551,7 @@ body {
   grid-template-columns: 42px 46px 1fr;
   height: 36px;
   min-height: 36px;
-  border-bottom: 1px solid #e8eee8;
+  border-bottom: 1px solid #fff;
   align-items: center;
   position: relative;
   transition: background 0.12s, box-shadow 0.15s;
