@@ -52,7 +52,7 @@ body {
   font-family: var(--font-body);
   background: var(--bg2);
   color: var(--text);
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -65,7 +65,7 @@ body {
 .wrapper {
   max-width: 1500px;
   margin: 0 auto;
-  min-height: 100vh;
+  min-height: 100dvh;
   box-shadow: 0 0 8px rgba(0,0,0,0.5);
   position: relative;
   background: var(--bg);
@@ -97,7 +97,7 @@ body {
   padding: 0 24px 24px;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--sticky-height, 180px));
+  height: calc(100dvh - var(--sticky-height, 180px));
   overflow: hidden;
 }
 
