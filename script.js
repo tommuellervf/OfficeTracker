@@ -6,12 +6,14 @@ let currentState = 'DE-BW';
 let holidaysCache = {};
 let absences = [];
 let viewMode = 'month';
+const MAX_FUTURE_DAYS = 180;
 let settings = {
   hoursPerWeek: 40,
   workDays: [1,2,3,4,5],
   customHolidays: {},
   colors: {
     accent: '#2563eb',
+    accent2: '#2563eb',
     vacation: '#004D40',
     'vacation-bg': '#80CBC4',
     'vacation-border': '#4DB6AC',
@@ -57,6 +59,12 @@ function loadData() {
   if (saved) {
     try {
       const data = JSON.parse(saved);
+      if (data.absences !== undefined) {
+        try { validateImport({ absences: data.absences }); } catch (e) {
+          console.warn('Gespeicherte Abwesenheiten ungültig, werden zurückgesetzt:', e);
+          data.absences = [];
+        }
+      }
       absences = data.absences || [];
       if (data.view) {
         curYear = typeof data.view.year === 'number' && data.view.year >= 2000 && data.view.year <= 2100 ? data.view.year : new Date().getFullYear();
@@ -77,7 +85,7 @@ function loadData() {
 function applyCustomColors() {
   const root = document.documentElement;
   root.style.setProperty('--accent', settings.colors.accent);
-  root.style.setProperty('--accent2', settings.colors.accent);
+  root.style.setProperty('--accent2', settings.colors.accent2 || settings.colors.accent);
   root.style.setProperty('--vacation', settings.colors.vacation);
   root.style.setProperty('--vacation-bg', settings.colors['vacation-bg']);
   root.style.setProperty('--vacation-border', settings.colors['vacation-border']);
@@ -111,7 +119,7 @@ async function ensureHolidays(year) {
   });
   try {
     const subdivisionCode = currentState;
-    const url = `https://openholidaysapi.org/PublicHolidays?countryIsoCode=DE&subdivisionCode=${subdivisionCode}&languageIsoCode=DE&validFrom=${year}-01-01&validTo=${year}-12-31`;
+    const url = `https://openholidaysapi.org/PublicHolidays?countryIsoCode=DE&subdivisionCode=${encodeURIComponent(subdivisionCode)}&languageIsoCode=DE&validFrom=${year}-01-01&validTo=${year}-12-31`;
     const r = await fetch(url);
     if (r.ok) {
       const data = await r.json();
@@ -162,6 +170,18 @@ function isHoliday(dateStr) {
   return !!holidaysCache[year]?.[dateStr];
 }
 
+function addDropListeners(el, dateStr, noteOnly = false) {
+  el.addEventListener('dragover', e => { e.preventDefault(); el.closest('.day-row').classList.add('drag-over'); });
+  el.addEventListener('dragleave', () => el.closest('.day-row').classList.remove('drag-over'));
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    el.closest('.day-row').classList.remove('drag-over');
+    const type = e.dataTransfer.getData('type');
+    if (type === 'note') addNote(dateStr);
+    else if (!noteOnly && type) addEntry(type, dateStr);
+  });
+}
+
 function renderMonth() {
   const body = document.getElementById('cal-body');
   const now = new Date();
@@ -177,7 +197,7 @@ function renderMonth() {
     const isWE = dow===0 || dow===6;
     const isWork = isWorkday(dow);
     const dateStr = mkDate(curYear, curMonth, d);
-    const isToday = dateStr === todayStr && isCurrentMonth;
+    const isToday = dateStr === todayStr;
     const hol = !!holidaysCache[curYear]?.[dateStr];
     const absInfo = getAbsInfo(dateStr);
     const noteInfo = getNoteInfo(dateStr);
@@ -236,32 +256,27 @@ function renderMonth() {
     if (hol) {
       const bl = document.createElement('div');
       bl.className = 'ab-block holiday';
-      bl.innerHTML = `<span class="ab-label">🎉 ${holidaysCache[curYear][dateStr]}</span>`;
+      bl.innerHTML = `<span class="ab-label">🎉 ${escapeHtml(holidaysCache[curYear][dateStr])}</span>`;
       if (hasNote) {
         absCell.classList.add('has-note');
         absCell.appendChild(bl);
         absCell.appendChild(buildNoteBlock(noteInfo, true));
       } else {
         absCell.appendChild(bl);
-        absCell.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
-        absCell.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-        absCell.addEventListener('drop', e => {
-          e.preventDefault(); row.classList.remove('drag-over');
-          if(e.dataTransfer.getData('type') === 'note') addNote(dateStr);
-        });
+        addDropListeners(absCell, dateStr, true);
       }
     } else if (absInfo) {
       const {ab, idx} = absInfo;
       const total = ab.dates.length;
       const bl = document.createElement('div');
       bl.className = `ab-block ${ab.type}`;
-      const emoji = ab.type==='vacation' ? '🌴' : ab.type==='sick' ? '😷' : ab.type==='office' ? '🏢' : '📋';
-      const label = ab.type==='vacation' ? 'Urlaub' : ab.type==='sick' ? 'Krank' : ab.type==='office' ? 'Im Office' : (ab.customLabel || 'Sonstige Abw.');
+      const { emoji, label: baseLabel } = TYPE_META[ab.type] || { emoji: '📋', label: 'Sonstige Abw.' };
+      const label = ab.type === 'other' ? (ab.customLabel || 'Sonstige Abw.') : baseLabel;
       const labelHtml = ab.type === 'other'
         ? idx === 0
           ? `<input class="ab-label-input" data-id="${ab.id}" value="${(ab.customLabel||'').replace(/"/g,'&quot;')}" placeholder="Sonstige Abw." title="Bezeichnung ändern">`
-          : `<span class="ab-label" style="opacity:0.6;font-size:10px;">${ab.customLabel || 'Sonstige'}</span>`
-        : `<span class="ab-label">${emoji} ${label}</span>`;
+          : `<span class="ab-label" style="opacity:0.6;font-size:10px;">${escapeHtml(ab.customLabel || 'Sonstige')}</span>`
+        : `<span class="ab-label">${emoji} ${escapeHtml(label)}</span>`;
       bl.innerHTML = `
         ${labelHtml}
         ${idx === 0 ? `
@@ -277,12 +292,7 @@ function renderMonth() {
         absCell.appendChild(buildNoteBlock(noteInfo, true));
       } else {
         absCell.appendChild(bl);
-        absCell.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
-        absCell.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-        absCell.addEventListener('drop', e => {
-          e.preventDefault(); row.classList.remove('drag-over');
-          if(e.dataTransfer.getData('type') === 'note') addNote(dateStr);
-        });
+        addDropListeners(absCell, dateStr, true);
       }
     } else if (hasNote) {
       absCell.classList.add('note-only');
@@ -294,31 +304,12 @@ function renderMonth() {
     row.appendChild(absCell);
     body.appendChild(row);
 
-    if(isWork && !hol && !absInfo) {
-      row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
-      row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-      row.addEventListener('drop', e => {
-        e.preventDefault();
-        row.classList.remove('drag-over');
-        const type = e.dataTransfer.getData('type');
-        if(type === 'note') addNote(dateStr);
-        else if(type) addEntry(type, dateStr);
-      });
-    }
-    if(isWE && !hasNote) {
-      row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
-      row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-      row.addEventListener('drop', e => {
-        e.preventDefault(); row.classList.remove('drag-over');
-        if(e.dataTransfer.getData('type') === 'note') addNote(dateStr);
-      });
-    }
+    if (isWork && !hol && !absInfo) addDropListeners(row, dateStr, false);
+    if (isWE && !hasNote) addDropListeners(row, dateStr, true);
   }
 }
 
 async function renderYearOverview() {
-  await ensureHolidays(curYear);
-
   const body = document.getElementById('cal-body');
   body.innerHTML = '';
   const grid = document.createElement('div');
@@ -345,10 +336,17 @@ async function renderYearOverview() {
       }
     }
 
-    const vacDays  = getAbsencesInMonth(m, 'vacation');
-    const sickDays = getAbsencesInMonth(m, 'sick');
-    const otherDays = getAbsencesInMonth(m, 'other');
-    const attended = getAttendedInMonth(m);
+    // Single-pass count for all absence types
+    const monthCounts = { vacation: 0, sick: 0, other: 0, office: 0 };
+    for (const ab of absences) {
+      if (ab.type in monthCounts) {
+        monthCounts[ab.type] += ab.dates.filter(d => d.startsWith(prefix)).length;
+      }
+    }
+    const vacDays   = monthCounts.vacation;
+    const sickDays  = monthCounts.sick;
+    const otherDays = monthCounts.other;
+    const attended  = monthCounts.office;
 
     const allAbs = vacDays + sickDays + otherDays;
     const effectiveWorkdays = workdays - holidayCount;
@@ -374,18 +372,26 @@ async function renderYearOverview() {
 
     const stripeClass = isFuture ? 'future' : status === 'done' ? 'done' : status === 'partial' ? 'partial' : 'open';
 
+    // Build O(1) lookup map for this month's absences
+    const absMap = new Map();
+    for (const ab of absences) {
+      if (ab.type === 'note') continue;
+      for (const date of ab.dates) {
+        if (date.startsWith(prefix)) absMap.set(date, ab.type);
+      }
+    }
+
     let dotsHtml = '';
     for (let d = 1; d <= dim; d++) {
       const dow = new Date(curYear, m, d).getDay();
       const dStr = mkDate(curYear, m, d);
       const isWE = dow === 0 || dow === 6;
-      const absI = getAbsInfo(dStr);
       const isHol = !!holidaysCache[curYear]?.[dStr];
       let dotClass = 'workday';
       if (isWE) dotClass = 'weekend';
       else if (isHol) dotClass = 'holiday';
-      else if (absI) dotClass = absI.ab.type;
-      dotsHtml += `<div class="year-dot ${dotClass}" title="${dStr}"></div>`;
+      else if (absMap.has(dStr)) dotClass = absMap.get(dStr);
+      dotsHtml += `<div class="year-dot ${dotClass}" title="${dStr.split('-').reverse().join('.')}"></div>`;
     }
 
     const numClass = attended >= pflicht && pflicht > 0 ? 'done' : attended > 0 ? 'partial' : '';
@@ -430,17 +436,6 @@ async function renderYearOverview() {
   body.appendChild(grid);
 }
 
-function getAbsencesInMonth(m, type = null) {
-  const prefix = `${curYear}-${pad(m+1)}-`;
-  return absences
-    .filter(ab => type === null || ab.type === type)
-    .reduce((sum, ab) => sum + ab.dates.filter(d => d.startsWith(prefix)).length, 0);
-}
-
-function getAttendedInMonth(m) {
-  return getAbsencesInMonth(m, 'office');
-}
-
 async function addEntry(type, startDate) {
   const dates = await computeDates(startDate, 1);
   if (dates.length) absences.push({ id: 'ab_'+Date.now(), type, dates });
@@ -449,22 +444,21 @@ async function addEntry(type, startDate) {
   updateStats();
 }
 
-function getAbsInfo(dateStr) {
-  for(const ab of absences){
+function getAbsInfo(dateStr, type = null) {
+  for (const ab of absences) {
+    if (type !== null) {
+      if (ab.type !== type) continue;
+    } else {
+      if (ab.type === 'note') continue;
+    }
     const idx = ab.dates.indexOf(dateStr);
-    if(idx !== -1 && ab.type !== 'note') return {ab, idx};
+    if (idx !== -1) return { ab, idx };
   }
   return null;
 }
 
 function getNoteInfo(dateStr) {
-  for(const ab of absences){
-    if(ab.type === 'note') {
-      const idx = ab.dates.indexOf(dateStr);
-      if(idx !== -1) return {ab, idx};
-    }
-  }
-  return null;
+  return getAbsInfo(dateStr, 'note');
 }
 
 async function addNote(dateStr) {
@@ -520,7 +514,7 @@ function buildNoteBlock(noteInfo, hasOtherEntry) {
   bl.innerHTML = `
     ${idx === 0
       ? `<input class="ab-label-input note-label-input" data-note-id="${ab.id}" value="${(ab.customLabel||'').replace(/"/g,'&quot;')}" placeholder="Notiz…">`
-      : `<span class="ab-label" style="opacity:0.6;font-size:10px;">${ab.customLabel || 'Notiz'}</span>`
+      : `<span class="ab-label" style="opacity:0.6;font-size:10px;">${escapeHtml(ab.customLabel || 'Notiz')}</span>`
     }
     ${idx === 0 ? `
     <div class="ab-controls">
@@ -563,8 +557,6 @@ async function computeDates(startDate, numDays) {
   return result;
 }
 
-const MAX_FUTURE_DAYS = 180;
-
 let isExtending = false;
 
 async function extendAbsence(id, delta) {
@@ -574,40 +566,40 @@ async function extendAbsence(id, delta) {
     const ab = absences.find(a => a.id === id);
     if (!ab) return;
 
-  if (delta > 0) {
-    let last = ab.dates[ab.dates.length - 1];
-    let [y, m, d] = last.split('-').map(Number);
-    let cursor = new Date(y, m - 1, d + 1);
+    if (delta > 0) {
+      let last = ab.dates[ab.dates.length - 1];
+      let [y, m, d] = last.split('-').map(Number);
+      let cursor = new Date(y, m - 1, d + 1);
 
-    const existing = new Set(absences.filter(a => a.type !== 'note').flatMap(a => a.dates));
+      const existing = new Set(absences.filter(a => a.type !== 'note').flatMap(a => a.dates));
 
-    for (let i = 0; i < MAX_FUTURE_DAYS; i++) {
-      const dow = cursor.getDay();
-      const dStr = mkDate(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
-      const cy = cursor.getFullYear();
+      for (let i = 0; i < MAX_FUTURE_DAYS; i++) {
+        const dow = cursor.getDay();
+        const dStr = mkDate(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+        const cy = cursor.getFullYear();
 
-      await ensureHolidays(cy);
-      const hol = isHoliday(dStr);
+        await ensureHolidays(cy);
+        const hol = isHoliday(dStr);
 
-      if (isWorkday(dow) && !hol && !existing.has(dStr)) {
-        ab.dates.push(dStr);
-        ab.dates.sort((a, b) => a.localeCompare(b));
-        break;
+        if (isWorkday(dow) && !hol && !existing.has(dStr)) {
+          ab.dates.push(dStr);
+          ab.dates.sort((a, b) => a.localeCompare(b));
+          break;
+        }
+        cursor.setDate(cursor.getDate() + 1);
       }
-      cursor.setDate(cursor.getDate() + 1);
-    }
-  } else {
-    if (ab.dates.length <= 1) {
-      absences = absences.filter(a => a.id !== id);
     } else {
-      ab.dates.sort((a, b) => a.localeCompare(b));
-      ab.dates.pop();
+      if (ab.dates.length <= 1) {
+        absences = absences.filter(a => a.id !== id);
+      } else {
+        ab.dates.sort((a, b) => a.localeCompare(b));
+        ab.dates.pop();
+      }
     }
-  }
 
-  saveData();
-  renderMonth();
-  updateStats();
+    saveData();
+    renderMonth();
+    updateStats();
   } finally {
     isExtending = false;
   }
@@ -682,7 +674,7 @@ function renderHolidayList() {
   }
   list.innerHTML = items.map(h => {
     const p = h.date.split('-');
-    return `<div class="holiday-chip"><span>🎉 ${h.name}</span><span class="holiday-chip-date">${p[2]}.${p[1]}.</span></div>`;
+    return `<div class="holiday-chip"><span>🎉 ${escapeHtml(h.name)}</span><span class="holiday-chip-date">${p[2]}.${p[1]}.</span></div>`;
   }).join('');
 }
 
@@ -692,9 +684,17 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+const TYPE_META = {
+  vacation: { emoji: '🌴', label: 'Urlaub' },
+  sick:     { emoji: '😷', label: 'Krank' },
+  office:   { emoji: '🏢', label: 'Im Office' },
+  other:    { emoji: '📋', label: 'Sonstige Abw.' },
+  note:     { emoji: '📌', label: 'Notiz' },
+};
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const VALID_TYPES = ['vacation', 'sick', 'office', 'other', 'note'];
-const COLOR_KEYS = ['accent', 'vacation', 'vacation-bg', 'vacation-border', 'sick', 'sick-bg', 'sick-border', 'holiday', 'holiday-bg', 'holiday-border', 'office', 'office-bg', 'office-border', 'other', 'other-bg', 'other-border', 'note', 'note-bg', 'note-border', 'bg'];
+const COLOR_KEYS = ['accent', 'accent2', 'vacation', 'vacation-bg', 'vacation-border', 'sick', 'sick-bg', 'sick-border', 'holiday', 'holiday-bg', 'holiday-border', 'office', 'office-bg', 'office-border', 'other', 'other-bg', 'other-border', 'note', 'note-bg', 'note-border', 'bg'];
 
 function validateImport(data) {
   if (typeof data !== 'object' || data === null) throw new Error('Ungültiges Format');
@@ -916,7 +916,7 @@ function initSettings() {
     const el = document.getElementById(`workday-${d}`);
     if (el) {
       el.onchange = () => {
-        settings.workDays = [0, 1, 2, 3, 4, 5, 6].filter(x => document.getElementById(`workday-${x}`).checked);
+        settings.workDays = [0,1,2,3,4,5,6].filter(x => document.getElementById(`workday-${x}`)?.checked);
         if (settings.workDays.length === 0) settings.workDays = [1, 2, 3, 4, 5];
         saveData();
         holidaysCache = {};

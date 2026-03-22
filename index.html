@@ -9,6 +9,8 @@
 </head>
 <body>
 
+<div class="wrapper">
+
 <div class="sticky-top">
 <div class="header">
   <div class="header-title">Office <span>Tracker</span></div>
@@ -282,21 +284,21 @@
                 <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;">
                   <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">1) Grundpflicht (Basis-Bürotage)</div>
                   <code style="font-size:12px;color:var(--accent);">Vollzeit (≥ 35h): immer 8 Tage</code>
-                  <div style="font-size:12px;color:var(--text-muted);margin:4px 0 6px;">Vodafone definiert 35h als Vollzeit – egal was die Formel ergäbe.</div>
+                  <div style="font-size:12px;color:var(--text-muted);margin:4px 0 6px;">Ab 35h Wochenarbeitszeit gilt Vollzeit – die Grundpflicht beträgt dann pauschal 8 Tage.</div>
                   <code style="font-size:12px;color:var(--accent);">Teilzeit (&lt; 35h): 8 × (Wochenstunden / 40)</code>
                   <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Wird kaufmännisch gerundet. Beispiel: 20h → 4 Tage.</div>
                 </div>
 
                 <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;">
                   <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">2) Monatliche Pflicht (inkl. Abwesenheiten)</div>
-                  <code style="font-size:12px;color:var(--accent);">Pflicht = P_grund − (Abwesenheiten × P_grund / Arbeitstage)</code>
+                  <code style="font-size:12px;color:var(--accent);">Pflicht = Grundpflicht − (Abwesenheiten × Grundpflicht / Arbeitstage)</code>
                   <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Abwesenheiten reduzieren die Pflicht anteilig. Wird kaufmännisch gerundet.</div>
                 </div>
 
                 <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;">
                   <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">Variablen</div>
                   <table style="width:100%;font-size:12px;border-collapse:collapse;">
-                    <tr><td style="color:var(--text-muted);padding:3px 0;width:110px;">Abwesenheiten</td><td style="color:var(--text);">Urlaub + Krank + EU/Non-EU Auslandstage + Rufbereitschaft + Nachtschichten</td></tr>
+                    <tr><td style="color:var(--text-muted);padding:3px 0;width:110px;">Abwesenheiten</td><td style="color:var(--text);">Urlaub + Krank + Auslandstage + Rufbereitschaft + Nachtschichten</td></tr>
                     <tr><td style="color:var(--text-muted);padding:3px 0;">Arbeitstage</td><td style="color:var(--text);">Mo–Fr im Monat, minus Feiertage</td></tr>
                   </table>
                 </div>
@@ -315,7 +317,7 @@
               <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;">
                 <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">🛠️ Eigenentwicklung</div>
                 <div style="font-size:12px;color:var(--text-muted);line-height:1.6;">
-                  Kein offizielles Vodafone-Tool – einfach selbst gebaut, weil es praktisch ist.<br>Bei Unklarheiten zur tatsächlichen Regelung lieber kurz bei HR oder dem Vorgesetzten nachfragen.
+                  Kein offizielles Firmen-Tool – einfach selbst gebaut, weil es praktisch ist.<br>Bei Unklarheiten zur tatsächlichen Regelung lieber kurz bei HR oder dem Vorgesetzten nachfragen.
                 </div>
               </div>
 
@@ -356,6 +358,8 @@
     </div>
   </div><!-- /.settings-modal-inner -->
 </div><!-- /.settings-modal-overlay -->
+
+</div><!-- /.wrapper -->
 
 <script src="script.js" defer></script>
 </body>
