@@ -159,7 +159,6 @@ async function loadAndRender() {
   } else {
     renderMonth();
   }
-  renderHolidayList();
   updateStats();
 
   document.getElementById('view-toggle').textContent = viewMode === 'month' ? 'Jahr' : 'Monat';
@@ -659,23 +658,6 @@ function updateStats() {
   }
   document.getElementById('stat-office').innerHTML =
     `<span>${stats.attended}</span> / ${officePflicht}`;
-}
-
-function renderHolidayList() {
-  const list = document.getElementById('holiday-list');
-  const items = [];
-  for(let d=1; d<= new Date(curYear, curMonth+1, 0).getDate(); d++){
-    const dStr = mkDate(curYear, curMonth, d);
-    if(holidaysCache[curYear]?.[dStr]) items.push({date:dStr, name:holidaysCache[curYear][dStr]});
-  }
-  if(!items.length){
-    list.innerHTML = `<div class="holiday-empty">Keine Feiertage</div>`;
-    return;
-  }
-  list.innerHTML = items.map(h => {
-    const p = h.date.split('-');
-    return `<div class="holiday-chip"><span>🎉 ${escapeHtml(h.name)}</span><span class="holiday-chip-date">${p[2]}.${p[1]}.</span></div>`;
-  }).join('');
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
