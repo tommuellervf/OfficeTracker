@@ -185,7 +185,6 @@ function renderMonth() {
   const body = document.getElementById('cal-body');
   const now = new Date();
   const todayStr = mkDate(now.getFullYear(), now.getMonth(), now.getDate());
-  const isCurrentMonth = (curYear === now.getFullYear() && curMonth === now.getMonth());
   const dim = new Date(curYear, curMonth+1, 0).getDate();
   let lastKW = null;
   body.innerHTML = '';
@@ -210,19 +209,6 @@ function renderMonth() {
 
     const hasNote = !!noteInfo;
     const isSplitDay = hasNote && (hol || !!absInfo);
-
-    let splitBg = 'white', splitBorder = 'var(--border2)';
-    if (isSplitDay) {
-      if (absInfo) {
-        const t = absInfo.ab.type;
-        if (t === 'office')   { splitBg = 'var(--office-bg)';   splitBorder = 'var(--office-border)'; }
-        if (t === 'vacation') { splitBg = 'var(--vacation-bg)'; splitBorder = 'var(--vacation-border)'; }
-        if (t === 'sick')     { splitBg = 'var(--sick-bg)';     splitBorder = 'var(--sick-border)'; }
-        if (t === 'other')    { splitBg = 'var(--other-bg)';    splitBorder = 'var(--other-border)'; }
-      } else if (hol) {
-        splitBg = 'var(--holiday-bg)'; splitBorder = 'var(--holiday-border)';
-      }
-    }
 
     const row = document.createElement('div');
     row.className = 'day-row'
@@ -276,10 +262,17 @@ function renderMonth() {
           ? `<input class="ab-label-input" data-id="${ab.id}" value="${(ab.customLabel||'').replace(/"/g,'&quot;')}" placeholder="Sonstige Abw." title="Bezeichnung ändern">`
           : `<span class="ab-label" style="opacity:0.6;font-size:10px;">${escapeHtml(ab.customLabel || 'Sonstige')}</span>`
         : `<span class="ab-label">${emoji} ${escapeHtml(label)}</span>`;
+
+      // Gear button only on first day of block
+      const gearHtml = idx === 0
+        ? `<button class="gear-btn" data-id="${ab.id}" data-date="${dateStr}" data-type="${ab.type}" title="Serie erstellen">${GEAR_SVG}</button>`
+        : '';
+
       bl.innerHTML = `
         ${labelHtml}
         ${idx === 0 ? `
         <div class="ab-controls">
+          ${gearHtml}
           <button class="ctrl-btn btn-minus" data-id="${ab.id}">−</button>
           <span class="ab-day-count">${total}d</span>
           <button class="ctrl-btn btn-plus" data-id="${ab.id}">+</button>
@@ -317,7 +310,7 @@ async function renderYearOverview() {
   const now = new Date();
   const todayMonth = now.getMonth();
   const todayYear = now.getFullYear();
-  const baseDays = calcBaseDays(); // ← Vollzeit-Sonderregel
+  const baseDays = calcBaseDays();
 
   for (let m = 0; m < 12; m++) {
     const prefix = `${curYear}-${pad(m+1)}-`;
@@ -335,7 +328,6 @@ async function renderYearOverview() {
       }
     }
 
-    // Single-pass count for all absence types
     const monthCounts = { vacation: 0, sick: 0, other: 0, office: 0 };
     for (const ab of absences) {
       if (ab.type in monthCounts) {
@@ -371,7 +363,6 @@ async function renderYearOverview() {
 
     const stripeClass = isFuture ? 'future' : status === 'done' ? 'done' : status === 'partial' ? 'partial' : 'open';
 
-    // Build O(1) lookup map for this month's absences
     const absMap = new Map();
     for (const ab of absences) {
       if (ab.type === 'note') continue;
@@ -517,6 +508,7 @@ function buildNoteBlock(noteInfo, hasOtherEntry) {
     }
     ${idx === 0 ? `
     <div class="ab-controls">
+      <button class="gear-btn" data-id="${ab.id}" data-date="${ab.dates[0]}" data-type="note" title="Serie erstellen">${GEAR_SVG}</button>
       <button class="ctrl-btn btn-note-minus" data-note-id="${ab.id}">−</button>
       <span class="ab-day-count">${total}d</span>
       <button class="ctrl-btn btn-note-plus" data-note-id="${ab.id}">+</button>
@@ -635,7 +627,7 @@ function updateStats() {
 
   const allAbs = stats.absCount;
   const netWorkdays = workdays - holidayCount - stats.absCount;
-  const baseDays = calcBaseDays(); // ← Vollzeit-Sonderregel
+  const baseDays = calcBaseDays();
   const effectiveWorkdays = workdays - holidayCount;
   const raw = effectiveWorkdays === 0 ? baseDays : baseDays - (allAbs * (baseDays / effectiveWorkdays));
   const officePflicht = Math.round(Math.max(0, raw));
@@ -673,6 +665,8 @@ const TYPE_META = {
   other:    { emoji: '📋', label: 'Sonstige Abw.' },
   note:     { emoji: '📌', label: 'Notiz' },
 };
+
+const GEAR_SVG = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const VALID_TYPES = ['vacation', 'sick', 'office', 'other', 'note'];
@@ -712,6 +706,405 @@ function renderCustomHolidays() {
       </div>
     `).join('');
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SERIES PANEL
+// ═══════════════════════════════════════════════════════════════════════════
+
+let seriesPanel = null;
+let seriesOverlay = null;
+let seriesPanelState = null;
+// seriesPanelState: { id, type, startDate, sourceDates, n, untilYear, untilMonth,
+//                     minYear, minMonth, maxYear, maxMonth, insertedIds }
+
+function spMonthLabel(y, m) {
+  return `${MONTHS_DE[m]} ${y}`;
+}
+
+function closeSeriesPanel() {
+  if (seriesOverlay) {
+    seriesOverlay.classList.remove('series-overlay-visible');
+    setTimeout(() => { seriesOverlay?.remove(); seriesOverlay = null; }, 200);
+  }
+  if (seriesPanel) {
+    seriesPanel.classList.remove('series-panel-visible');
+    setTimeout(() => { seriesPanel?.remove(); seriesPanel = null; }, 200);
+  }
+  document.querySelectorAll('.gear-btn').forEach(b => b.style.opacity = '');
+}
+
+async function openSeriesPanel(gearBtn, id, type, startDate) {
+  closeSeriesPanel();
+  gearBtn.style.opacity = '0';
+
+  // Get the full source block dates
+  const sourceAb = absences.find(a => a.id === id);
+  const sourceDates = sourceAb ? [...sourceAb.dates].sort() : [startDate];
+
+  // Calculate minimum N (number of weeks) based on block size
+  const [fy, fm, fd] = sourceDates[0].split('-').map(Number);
+  const [ly, lm, ld] = sourceDates[sourceDates.length - 1].split('-').map(Number);
+  const firstKW = getWeekNum(new Date(fy, fm - 1, fd));
+  const lastKW = getWeekNum(new Date(ly, lm - 1, ld));
+  const minN = lastKW - firstKW + 1;
+
+  // Until bounds: min = current month, max = current month + 24
+  const now = new Date();
+  const minYear = now.getFullYear();
+  const minMonth = now.getMonth();
+  const maxDate = new Date(now.getFullYear(), now.getMonth() + 24, 1);
+  const maxYear = maxDate.getFullYear();
+  const maxMonth = maxDate.getMonth();
+
+  // Default until = December of current year (clamped to max)
+  let untilYear = minYear;
+  let untilMonth = 11;
+  if (untilYear > maxYear || (untilYear === maxYear && untilMonth > maxMonth)) {
+    untilYear = maxYear; untilMonth = maxMonth;
+  }
+
+  seriesPanelState = {
+    id, type,
+    startDate: sourceDates[0],
+    sourceDates,
+    n: Math.max(1, minN),
+    minN,
+    untilYear, untilMonth,
+    minYear, minMonth,
+    maxYear, maxMonth,
+    insertedIds: null
+  };
+
+  // Overlay — blocks all outside interaction
+  const overlay = document.createElement('div');
+  overlay.className = 'series-overlay';
+  document.body.appendChild(overlay);
+  seriesOverlay = overlay;
+  overlay.addEventListener('click', () => {
+    closeSeriesPanel();
+    gearBtn.style.opacity = '';
+  });
+
+  // Panel
+  const panel = document.createElement('div');
+  panel.className = 'series-panel';
+  panel.innerHTML = buildSeriesPanelHTML();
+  document.body.appendChild(panel);
+  seriesPanel = panel;
+
+  positionSeriesPanel(panel);
+
+  // Preload holidays for entire range
+  const yearsNeeded = new Set();
+  for (let y = minYear; y <= maxYear + 1; y++) yearsNeeded.add(y);
+  await Promise.all([...yearsNeeded].map(y => ensureHolidays(y)));
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    overlay.classList.add('series-overlay-visible');
+    panel.classList.add('series-panel-visible');
+  }));
+
+  bindSeriesPanelEvents(panel, gearBtn);
+  await updateSeriesPreview(panel);
+}
+
+function buildSeriesPanelHTML() {
+  const { n, sourceDates, untilYear, untilMonth } = seriesPanelState;
+  const blockSize = sourceDates.length;
+  return `
+    <div class="sp-body">
+      <div class="sp-title">🔁 Serie erstellen</div>
+      ${blockSize > 1 ? `<div class="sp-block-info">Blockgröße: <strong>${blockSize} Tage</strong></div>` : ''}
+      <div class="sp-rhythm-row">
+        <span class="sp-rhythm-label">Alle</span>
+        <button class="sp-n-btn sp-n-minus">−</button>
+        <span class="sp-n-val">${n}</span>
+        <button class="sp-n-btn sp-n-plus">+</button>
+        <span class="sp-rhythm-label">Wochen wiederholen</span>
+      </div>
+      <div class="sp-until-row">
+        <span class="sp-rhythm-label">Bis inkl.</span>
+        <div class="sp-month-nav">
+          <button class="sp-month-prev nav-btn">←</button>
+          <span class="sp-month-label">${spMonthLabel(untilYear, untilMonth)}</span>
+          <button class="sp-month-next nav-btn">→</button>
+        </div>
+      </div>
+      <div class="sp-preview">
+        <div class="sp-preview-loading">Berechne…</div>
+      </div>
+      <div class="sp-collisions" style="display:none;"></div>
+      <div class="sp-footer">
+        <button class="sp-btn-cancel">Abbrechen</button>
+        <button class="sp-btn-insert" disabled>Einfügen</button>
+      </div>
+    </div>
+  `;
+}
+
+function positionSeriesPanel(panel) {
+  const panelW = 340;
+  panel.style.width = panelW + 'px';
+  panel.style.position = 'fixed';
+  panel.style.zIndex = '501';
+  panel.style.left = `calc(50% - ${panelW / 2}px)`;
+  panel.style.top = `calc(50% - 180px)`;
+  panel.style.bottom = 'auto';
+}
+
+function updateUntilNav(panel) {
+  const { untilYear, untilMonth, minYear, minMonth, maxYear, maxMonth } = seriesPanelState;
+  panel.querySelector('.sp-month-prev').disabled = untilYear === minYear && untilMonth === minMonth;
+  panel.querySelector('.sp-month-next').disabled = untilYear === maxYear && untilMonth === maxMonth;
+  panel.querySelector('.sp-month-label').textContent = spMonthLabel(untilYear, untilMonth);
+}
+
+function bindSeriesPanelEvents(panel, gearBtn) {
+  // N −/+
+  panel.querySelector('.sp-n-minus').addEventListener('click', async () => {
+    if (seriesPanelState.n > seriesPanelState.minN) {
+      seriesPanelState.n--;
+      panel.querySelector('.sp-n-val').textContent = seriesPanelState.n;
+      await updateSeriesPreview(panel);
+    }
+  });
+  panel.querySelector('.sp-n-plus').addEventListener('click', async () => {
+    if (seriesPanelState.n < 52) {
+      seriesPanelState.n++;
+      panel.querySelector('.sp-n-val').textContent = seriesPanelState.n;
+      await updateSeriesPreview(panel);
+    }
+  });
+
+  // Month nav ← →
+  panel.querySelector('.sp-month-prev').addEventListener('click', async () => {
+    const { untilYear, untilMonth, minYear, minMonth } = seriesPanelState;
+    if (untilYear === minYear && untilMonth === minMonth) return;
+    if (untilMonth === 0) { seriesPanelState.untilYear--; seriesPanelState.untilMonth = 11; }
+    else seriesPanelState.untilMonth--;
+    updateUntilNav(panel);
+    await updateSeriesPreview(panel);
+  });
+  panel.querySelector('.sp-month-next').addEventListener('click', async () => {
+    const { untilYear, untilMonth, maxYear, maxMonth } = seriesPanelState;
+    if (untilYear === maxYear && untilMonth === maxMonth) return;
+    if (untilMonth === 11) { seriesPanelState.untilYear++; seriesPanelState.untilMonth = 0; }
+    else seriesPanelState.untilMonth++;
+    updateUntilNav(panel);
+    await updateSeriesPreview(panel);
+  });
+
+  updateUntilNav(panel);
+
+  // Cancel / Close
+  panel.querySelector('.sp-btn-cancel').addEventListener('click', () => {
+    closeSeriesPanel();
+    gearBtn.style.opacity = '';
+  });
+
+  // Insert / Undo
+  panel.querySelector('.sp-btn-insert').addEventListener('click', async () => {
+    if (seriesPanelState.insertedIds) {
+      undoSeries(panel);
+    } else {
+      await insertSeries(panel);
+    }
+  });
+}
+
+async function computeSeriesCopies() {
+  // Returns array of copies; each copy = array of { date, status }
+  // preserving the full block shape of the source entry.
+  const { id, startDate, sourceDates, n, type, untilYear, untilMonth } = seriesPanelState;
+  const stepDays = n * 7;
+  const untilEnd = new Date(untilYear, untilMonth + 1, 0); // last day of until-month
+
+  // Day offsets of source block relative to block start
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const blockStart = new Date(sy, sm - 1, sd);
+  const offsets = sourceDates.map(dStr => {
+    const [dy, dm, dd] = dStr.split('-').map(Number);
+    return Math.round((new Date(dy, dm - 1, dd) - blockStart) / 86400000);
+  });
+
+  // Exclude own block dates to avoid self-collision
+  const existingNonNote = new Set(
+    absences.filter(a => a.type !== 'note' && a.id !== id).flatMap(a => a.dates)
+  );
+  const existingNotes = new Set(
+    absences.filter(a => a.type === 'note' && a.id !== id).flatMap(a => a.dates)
+  );
+
+  const copies = [];
+  let copyStart = new Date(blockStart);
+  copyStart.setDate(copyStart.getDate() + stepDays);
+
+  while (copyStart <= untilEnd) {
+    const days = [];
+    for (const offset of offsets) {
+      const dayDate = new Date(copyStart);
+      dayDate.setDate(dayDate.getDate() + offset);
+      if (dayDate > untilEnd) continue;
+
+      const y = dayDate.getFullYear();
+      await ensureHolidays(y);
+      const dStr = mkDate(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+      const dow = dayDate.getDay();
+      const isWE = dow === 0 || dow === 6;
+      const holName = holidaysCache[y]?.[dStr];
+
+      let status = 'ok';
+      if (type === 'note') {
+        if (existingNotes.has(dStr)) status = 'note';
+      } else {
+        if (isWE)          status = 'weekend';
+        else if (holName)  status = 'holiday:' + holName;
+        else if (existingNonNote.has(dStr)) status = 'occupied';
+      }
+      days.push({ date: dStr, status });
+    }
+    if (days.length > 0) copies.push(days);
+    copyStart.setDate(copyStart.getDate() + stepDays);
+  }
+
+  return copies;
+}
+
+async function updateSeriesPreview(panel) {
+  const preview = panel.querySelector('.sp-preview');
+  const collDiv = panel.querySelector('.sp-collisions');
+  const insertBtn = panel.querySelector('.sp-btn-insert');
+
+  preview.innerHTML = '<div class="sp-preview-loading">Berechne…</div>';
+  collDiv.style.display = 'none';
+  insertBtn.disabled = true;
+
+  const copies = await computeSeriesCopies();
+
+  if (copies.length === 0) {
+    preview.innerHTML = `<div class="sp-preview-empty">Keine Termine im gewählten Zeitraum.</div>`;
+    return;
+  }
+
+  const allDays = copies.flat();
+  const okDays = allDays.filter(d => d.status === 'ok');
+  const skippedDays = allDays.filter(d => d.status !== 'ok');
+  const okCopies = copies.filter(c => c.some(d => d.status === 'ok'));
+
+  preview.innerHTML = `
+    <div class="sp-preview-row">
+      <span class="sp-preview-ok">✅ ${okCopies.length} Kopie${okCopies.length !== 1 ? 'n' : ''} (${okDays.length} Tage)</span>
+      ${skippedDays.length > 0
+        ? `<span class="sp-preview-warn">⏭️ ${skippedDays.length} übersprungen</span>`
+        : '<span class="sp-preview-clean">Keine Kollisionen</span>'
+      }
+    </div>
+  `;
+
+  if (skippedDays.length > 0) {
+    collDiv.style.display = 'block';
+    collDiv.innerHTML = '<div class="sp-coll-title">Übersprungene Tage:</div>' +
+      skippedDays.map(c => {
+        const [y, m, d] = c.date.split('-').map(Number);
+        const dateLabel = `${String(d).padStart(2,'0')}.${String(m).padStart(2,'0')}.${y}`;
+        const dow = DAYS_SHORT[new Date(y, m-1, d).getDay()];
+        let icon = '🚫', reason = '';
+        if (c.status === 'weekend')               { icon = '📅'; reason = 'Wochenende'; }
+        else if (c.status.startsWith('holiday:')) { icon = '🎉'; reason = c.status.slice(8); }
+        else if (c.status === 'occupied')          { icon = '🚫'; reason = 'Bereits belegt'; }
+        else if (c.status === 'note')              { icon = '📌'; reason = 'Bereits eine Notiz'; }
+        return `<div class="sp-coll-item"><span class="sp-coll-icon">${icon}</span><span class="sp-coll-date">${dateLabel} ${dow}</span><span class="sp-coll-reason">${escapeHtml(reason)}</span></div>`;
+      }).join('');
+  }
+
+  if (okDays.length > 0) {
+    insertBtn.disabled = false;
+    insertBtn.textContent = 'Einfügen';
+    insertBtn.classList.remove('sp-btn-undo');
+  }
+}
+
+async function insertSeries(panel) {
+  const { id, type } = seriesPanelState;
+  const copies = await computeSeriesCopies();
+
+  // Carry over customLabel from source entry (note, other)
+  const sourceAb = absences.find(a => a.id === id);
+  const customLabel = sourceAb?.customLabel || '';
+
+  const insertedIds = [];
+  for (const copy of copies) {
+    const okDates = copy.filter(d => d.status === 'ok').map(d => d.date);
+    if (okDates.length === 0) continue;
+    // Each copy = one independent entry (stamp logic, Option B)
+    const newId = 'ab_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    const entry = { id: newId, type, dates: okDates.sort() };
+    if (customLabel) entry.customLabel = customLabel;
+    absences.push(entry);
+    insertedIds.push(newId);
+  }
+
+  if (insertedIds.length === 0) {
+    closeSeriesPanel();
+    return;
+  }
+
+  seriesPanelState.insertedIds = insertedIds;
+  saveData();
+  renderMonth();
+  updateStats();
+  showSeriesDoneState(panel, insertedIds.length);
+}
+
+function showSeriesDoneState(panel, count) {
+  const preview   = panel.querySelector('.sp-preview');
+  const collDiv   = panel.querySelector('.sp-collisions');
+  const insertBtn = panel.querySelector('.sp-btn-insert');
+  const cancelBtn = panel.querySelector('.sp-btn-cancel');
+  const rhythmRow = panel.querySelector('.sp-rhythm-row');
+  const untilRow  = panel.querySelector('.sp-until-row');
+  const blockInfo = panel.querySelector('.sp-block-info');
+
+  if (rhythmRow) rhythmRow.style.display = 'none';
+  if (untilRow)  untilRow.style.display  = 'none';
+  if (blockInfo) blockInfo.style.display = 'none';
+  collDiv.style.display = 'none';
+
+  preview.innerHTML = `<div class="sp-preview-done">✅ ${count} Kopie${count !== 1 ? 'n' : ''} eingefügt</div>`;
+
+  insertBtn.disabled = false;
+  insertBtn.textContent = '⟲ Rückgängig';
+  insertBtn.classList.add('sp-btn-undo');
+  cancelBtn.textContent = 'Schließen';
+}
+
+function undoSeries(panel) {
+  const { insertedIds } = seriesPanelState;
+  if (!insertedIds) return;
+
+  absences = absences.filter(a => !insertedIds.includes(a.id));
+  seriesPanelState.insertedIds = null;
+
+  saveData();
+  renderMonth();
+  updateStats();
+
+  // Restore config state
+  const rhythmRow = panel.querySelector('.sp-rhythm-row');
+  const untilRow  = panel.querySelector('.sp-until-row');
+  const blockInfo = panel.querySelector('.sp-block-info');
+  const cancelBtn = panel.querySelector('.sp-btn-cancel');
+  const insertBtn = panel.querySelector('.sp-btn-insert');
+
+  if (rhythmRow) rhythmRow.style.display = '';
+  if (untilRow)  untilRow.style.display  = '';
+  if (blockInfo) blockInfo.style.display = '';
+  cancelBtn.textContent = 'Abbrechen';
+  insertBtn.classList.remove('sp-btn-undo');
+
+  updateUntilNav(panel);
+  updateSeriesPreview(panel);
 }
 
 // ─── Init sub-functions ──────────────────────────────────────────────────────
@@ -773,6 +1166,15 @@ function initDragDrop() {
   document.getElementById('chip-note')?.addEventListener('dragstart', e => e.dataTransfer.setData('type', 'note'));
 
   document.getElementById('cal-body').addEventListener('click', async e => {
+    // Gear button → open series panel
+    const gearBtn = e.target.closest('.gear-btn');
+    if (gearBtn) {
+      e.stopPropagation();
+      const { id, date, type } = gearBtn.dataset;
+      await openSeriesPanel(gearBtn, id, type, date);
+      return;
+    }
+
     const btn = e.target.closest('[data-id]');
     if (btn) {
       const id = btn.dataset.id;
