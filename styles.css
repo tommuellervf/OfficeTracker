@@ -908,7 +908,7 @@ select, button {
   transition: all 0.15s;
 }
 
-button, .nav-btn, .today-btn-inline {
+button, .nav-btn, .today-btn-inline, .ctrl-btn, .gear-btn {
   touch-action: manipulation;
 }
 

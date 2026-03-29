@@ -7,6 +7,7 @@ let holidaysCache = {};
 let absences = [];
 let viewMode = 'month';
 const MAX_FUTURE_DAYS = 180;
+let holidayFetchPromises = {};
 let settings = {
   hoursPerWeek: 40,
   workDays: [1,2,3,4,5],
@@ -47,11 +48,18 @@ function calcBaseDays() {
 }
 
 function saveData() {
-  localStorage.setItem('officeTracker', JSON.stringify({
-    absences,
-    view: { year: curYear, month: curMonth, state: currentState, mode: viewMode },
-    settings
-  }));
+  try {
+    localStorage.setItem('officeTracker', JSON.stringify({
+      absences,
+      view: { year: curYear, month: curMonth, state: currentState, mode: viewMode },
+      settings
+    }));
+  } catch (e) {
+    console.error('Speichern im LocalStorage fehlgeschlagen:', e);
+    if (e.name === 'QuotaExceededError') {
+      alert('Der Speicherplatz deines Browsers für diese Seite ist voll. Bitte exportiere deine Daten und lösche alte Einträge.');
+    }
+  }
 }
 
 function loadData() {
@@ -113,29 +121,36 @@ function isWorkday(dow) {
 
 async function ensureHolidays(year) {
   if (holidaysCache[year]) return holidaysCache[year];
-  const h = {};
-  Object.entries(settings.customHolidays).forEach(([date, name]) => {
-    if (date.startsWith(String(year))) h[date] = name;
-  });
-  try {
-    const subdivisionCode = currentState;
-    const url = `https://openholidaysapi.org/PublicHolidays?countryIsoCode=DE&subdivisionCode=${encodeURIComponent(subdivisionCode)}&languageIsoCode=DE&validFrom=${year}-01-01&validTo=${year}-12-31`;
-    const r = await fetch(url);
-    if (r.ok) {
-      const data = await r.json();
-      data.forEach(entry => {
-        const date = entry.startDate;
-        const name = entry.name?.find(n => n.language === 'DE')?.text
-                  || entry.name?.[0]?.text
-                  || 'Feiertag';
-        h[date] = name;
-      });
+  if (holidayFetchPromises[year]) return holidayFetchPromises[year];
+
+  holidayFetchPromises[year] = (async () => {
+    const h = {};
+    Object.entries(settings.customHolidays).forEach(([date, name]) => {
+      if (date.startsWith(String(year))) h[date] = name;
+    });
+    try {
+      const subdivisionCode = currentState;
+      const url = `https://openholidaysapi.org/PublicHolidays?countryIsoCode=DE&subdivisionCode=${encodeURIComponent(subdivisionCode)}&languageIsoCode=DE&validFrom=${year}-01-01&validTo=${year}-12-31`;
+      const r = await fetch(url);
+      if (r.ok) {
+        const data = await r.json();
+        data.forEach(entry => {
+          const date = entry.startDate;
+          const name = entry.name?.find(n => n.language === 'DE')?.text
+                    || entry.name?.[0]?.text
+                    || 'Feiertag';
+          h[date] = name;
+        });
+      }
+    } catch (e) {
+      console.warn('Feiertage konnten nicht geladen werden:', e);
     }
-  } catch (e) {
-    console.warn('Feiertage konnten nicht geladen werden:', e);
-  }
-  holidaysCache[year] = h;
-  return h;
+    holidaysCache[year] = h;
+    delete holidayFetchPromises[year];
+    return h;
+  })();
+
+  return holidayFetchPromises[year];
 }
 
 async function loadAndRender() {
@@ -592,8 +607,10 @@ function getMonthlyMetrics(year, month) {
   const yearHolidays = holidaysCache[year] || {};
 
   for (let d = 1; d <= dim; d++) {
+    const dateObj = new Date(year, month, d, 12, 0, 0);
+    const dow = dateObj.getDay();
     const dStr = mkDate(year, month, d);
-    if (isWorkday(new Date(year, month, d).getDay())) {
+    if (isWorkday(dow)) {
       workdays++;
       if (yearHolidays[dStr]) holidayCount++;
     }
