@@ -325,6 +325,7 @@ async function renderYearOverview() {
     const attended  = metrics.counts.office;
     const holidayCount = metrics.holidayCount;
     const pflicht = metrics.officePflicht;
+    const dim = metrics.daysInMonth;
 
     let status = 'future';
     if (!isFuture) {
@@ -613,6 +614,7 @@ function getMonthlyMetrics(year, month) {
   const officePflicht = Math.round(Math.max(0, raw));
 
   return {
+    daysInMonth: dim,
     workdays, holidayCount, counts, totalAbs, officePflicht, baseDays,
     netWorkdays: workdays - holidayCount - totalAbs
   };
@@ -1148,11 +1150,64 @@ function initNavigation() {
 }
 
 function initDragDrop() {
-  document.getElementById('chip-vacation').addEventListener('dragstart', e => e.dataTransfer.setData('type', 'vacation'));
-  document.getElementById('chip-sick').addEventListener('dragstart', e => e.dataTransfer.setData('type', 'sick'));
-  document.getElementById('chip-office').addEventListener('dragstart', e => e.dataTransfer.setData('type', 'office'));
-  document.getElementById('chip-other').addEventListener('dragstart', e => e.dataTransfer.setData('type', 'other'));
-  document.getElementById('chip-note')?.addEventListener('dragstart', e => e.dataTransfer.setData('type', 'note'));
+  const chips = ['vacation', 'sick', 'office', 'other', 'note'];
+  let touchType = null;
+  let touchGhost = null;
+
+  chips.forEach(type => {
+    const el = document.getElementById('chip-' + type);
+    if (!el) return;
+
+    // Desktop Drag
+    el.addEventListener('dragstart', e => e.dataTransfer.setData('type', type));
+
+    // Tablet Touch
+    el.addEventListener('touchstart', e => {
+      touchType = type;
+      touchGhost = el.cloneNode(true);
+      touchGhost.classList.add('drag-ghost');
+      document.body.appendChild(touchGhost);
+      updateGhostPos(e.touches[0]);
+    }, { passive: false });
+  });
+
+  window.addEventListener('touchmove', e => {
+    if (!touchType) return;
+    e.preventDefault(); // Verhindert Scrollen während des Drags
+    updateGhostPos(e.touches[0]);
+
+    const target = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+    const row = target?.closest('.day-row');
+    
+    document.querySelectorAll('.day-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+    if (row) row.classList.add('drag-over');
+  }, { passive: false });
+
+  window.addEventListener('touchend', e => {
+    if (!touchType) return;
+    const touch = e.changedTouches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const row = target?.closest('.day-row');
+
+    if (row) {
+      const dateStr = row.dataset.date;
+      const isDroppable = row.classList.contains('droppable');
+      if (touchType === 'note') addNote(dateStr);
+      else if (isDroppable) addEntry(touchType, dateStr);
+    }
+
+    // Cleanup
+    document.querySelectorAll('.day-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+    if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+    touchType = null;
+  });
+
+  function updateGhostPos(touch) {
+    if (touchGhost) {
+      touchGhost.style.left = touch.clientX + 'px';
+      touchGhost.style.top = touch.clientY + 'px';
+    }
+  }
 
   document.getElementById('cal-body').addEventListener('click', async e => {
     // Gear button → open series panel
@@ -1421,6 +1476,33 @@ function init() {
   initSettings();
   initCustomHolidays();
   initDataManagement();
+
+  // Globaler Schutz gegen "Alles auswählen" und versehentliches Draggen der Seite
+  window.addEventListener('keydown', e => {
+    // Verhindert STRG+A / CMD+A, außer in Textfeldern
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+      const target = e.target.tagName.toLowerCase();
+      if (target !== 'input' && target !== 'textarea') {
+        e.preventDefault();
+      }
+    }
+  });
+
+  window.addEventListener('selectstart', e => {
+    const target = e.target.tagName.toLowerCase();
+    if (target !== 'input' && target !== 'textarea') {
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener('dragstart', e => {
+    const chip = e.target.closest('.drag-chip');
+    if (!chip) {
+      e.preventDefault();
+    } else {
+      window.getSelection().removeAllRanges();
+    }
+  });
 
   loadAndRender();
 }

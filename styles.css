@@ -61,6 +61,8 @@ body {
   background-image: url('img/boxed-bg.png'), radial-gradient(at 0% 0%, hsla(161,71%,95%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,95%,1) 0, transparent 50%);
   background-repeat: repeat;
   background-size: auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 body.loading {
@@ -845,6 +847,15 @@ body.loading {
   box-shadow: 2px 2px 8px rgba(0,0,0,0.08);
 }
 
+.drag-ghost {
+  position: fixed !important;
+  pointer-events: none !important;
+  z-index: 9999 !important;
+  opacity: 0.8;
+  transform: translate(-50%, -50%);
+  width: 140px;
+}
+
 .hint-card {
   background: var(--accent-light);
   border: 1px solid rgba(26,107,60,0.2);
@@ -895,6 +906,15 @@ select, button {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
+}
+
+button, .nav-btn, .today-btn-inline {
+  touch-action: manipulation;
+}
+
+input, textarea {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 select:focus, button:focus {
