@@ -318,31 +318,13 @@ async function renderYearOverview() {
     const isPast    = curYear < todayYear || (curYear === todayYear && m < todayMonth);
     const isFuture  = !isCurrent && !isPast;
 
-    const dim = new Date(curYear, m+1, 0).getDate();
-    let workdays = 0, holidayCount = 0;
-    for (let d = 1; d <= dim; d++) {
-      const dow = new Date(curYear, m, d).getDay();
-      if (isWorkday(dow)) {
-        workdays++;
-        if (holidaysCache[curYear]?.[mkDate(curYear, m, d)]) holidayCount++;
-      }
-    }
-
-    const monthCounts = { vacation: 0, sick: 0, other: 0, office: 0 };
-    for (const ab of absences) {
-      if (ab.type in monthCounts) {
-        monthCounts[ab.type] += ab.dates.filter(d => d.startsWith(prefix)).length;
-      }
-    }
-    const vacDays   = monthCounts.vacation;
-    const sickDays  = monthCounts.sick;
-    const otherDays = monthCounts.other;
-    const attended  = monthCounts.office;
-
-    const allAbs = vacDays + sickDays + otherDays;
-    const effectiveWorkdays = workdays - holidayCount;
-    const raw = effectiveWorkdays === 0 ? baseDays : baseDays - (allAbs * (baseDays / effectiveWorkdays));
-    const pflicht = Math.round(Math.max(0, raw));
+    const metrics = getMonthlyMetrics(curYear, m);
+    const vacDays   = metrics.counts.vacation;
+    const sickDays  = metrics.counts.sick;
+    const otherDays = metrics.counts.other;
+    const attended  = metrics.counts.office;
+    const holidayCount = metrics.holidayCount;
+    const pflicht = metrics.officePflicht;
 
     let status = 'future';
     if (!isFuture) {
@@ -603,53 +585,60 @@ function deleteAbsence(id) {
   updateStats();
 }
 
-function updateStats() {
-  const dim = new Date(curYear, curMonth+1, 0).getDate();
-  let workdays=0, holidayCount=0;
-  for(let d=1; d<=dim; d++){
-    const dow = new Date(curYear,curMonth,d).getDay();
-    if(isWorkday(dow)){ 
-      workdays++; 
-      if(isHoliday(mkDate(curYear,curMonth,d))) holidayCount++; 
+function getMonthlyMetrics(year, month) {
+  const dim = new Date(year, month + 1, 0).getDate();
+  let workdays = 0, holidayCount = 0;
+  const yearHolidays = holidaysCache[year] || {};
+
+  for (let d = 1; d <= dim; d++) {
+    const dStr = mkDate(year, month, d);
+    if (isWorkday(new Date(year, month, d).getDay())) {
+      workdays++;
+      if (yearHolidays[dStr]) holidayCount++;
     }
   }
-  const prefix = `${curYear}-${pad(curMonth+1)}-`;
-  const stats = absences.reduce((acc, ab) => {
-    const count = ab.dates.filter(d => d.startsWith(prefix)).length;
-    if (count === 0) return acc;
-    if (ab.type === 'office') {
-      acc.attended += count;
-    } else if (ab.type === 'vacation' || ab.type === 'sick' || ab.type === 'other') {
-      acc.absCount += count;
-    }
-    return acc;
-  }, { absCount: 0, attended: 0 });
 
-  const allAbs = stats.absCount;
-  const netWorkdays = workdays - holidayCount - stats.absCount;
+  const prefix = `${year}-${pad(month + 1)}-`;
+  const counts = { vacation: 0, sick: 0, other: 0, office: 0 };
+  absences.forEach(ab => {
+    if (counts.hasOwnProperty(ab.type)) {
+      counts[ab.type] += ab.dates.filter(d => d.startsWith(prefix)).length;
+    }
+  });
+
+  const totalAbs = counts.vacation + counts.sick + counts.other;
   const baseDays = calcBaseDays();
   const effectiveWorkdays = workdays - holidayCount;
-  const raw = effectiveWorkdays === 0 ? baseDays : baseDays - (allAbs * (baseDays / effectiveWorkdays));
+  const raw = effectiveWorkdays === 0 ? baseDays : baseDays - (totalAbs * (baseDays / effectiveWorkdays));
   const officePflicht = Math.round(Math.max(0, raw));
 
-  document.getElementById('stat-workdays').textContent = workdays;
-  document.getElementById('stat-holidays').textContent = holidayCount;
-  document.getElementById('stat-absences').textContent = stats.absCount;
-  document.getElementById('stat-net').textContent = Math.max(0, netWorkdays);
-  document.getElementById('stat-basedays').textContent = baseDays;
+  return {
+    workdays, holidayCount, counts, totalAbs, officePflicht, baseDays,
+    netWorkdays: workdays - holidayCount - totalAbs
+  };
+}
+
+function updateStats() {
+  const metrics = getMonthlyMetrics(curYear, curMonth);
+
+  document.getElementById('stat-workdays').textContent = metrics.workdays;
+  document.getElementById('stat-holidays').textContent = metrics.holidayCount;
+  document.getElementById('stat-absences').textContent = metrics.totalAbs;
+  document.getElementById('stat-net').textContent = Math.max(0, metrics.netWorkdays);
+  document.getElementById('stat-basedays').textContent = metrics.baseDays;
   document.getElementById('stat-basedays-sub').textContent = settings.hoursPerWeek >= 35
-    ? `${settings.hoursPerWeek}h/Woche (Vollzeit = 8)`
-    : `${settings.hoursPerWeek}h ÷ 5 Tage/Woche`;
+    ? `${settings.hoursPerWeek}h/Woche (VZ = 8)`
+    : `${settings.hoursPerWeek}h / 5 Tage`;
 
   const officeCard = document.getElementById('stat-office').closest('.stat-card');
   if (officeCard) {
     officeCard.classList.remove('status-ok', 'status-warn');
-    if (officePflicht > 0) {
-      officeCard.classList.add(stats.attended >= officePflicht ? 'status-ok' : 'status-warn');
+    if (metrics.officePflicht > 0) {
+      officeCard.classList.add(metrics.counts.office >= metrics.officePflicht ? 'status-ok' : 'status-warn');
     }
   }
   document.getElementById('stat-office').innerHTML =
-    `<span>${stats.attended}</span> / ${officePflicht}`;
+    `<span>${metrics.counts.office}</span> / ${metrics.officePflicht}`;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

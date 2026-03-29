@@ -3,20 +3,20 @@
 
 /* === CSS-Variablen & Reset === */
 :root {
-  --bg:        #f0f4f0;
-  --bg2:       #e4ebe4;
+  --bg:        #f8fafc;
+  --bg2:       #f1f5f9;
   --surface:   #ffffff;
-  --surface2:  #f7faf7;
-  --surface3:  #edf2ed;
-  --border:    #d0dbd0;
-  --border2:   #bccbbc;
-  --accent:    #1a6b3c;
-  --accent2:   #2d8a52;
+  --surface2:  #f8fafc;
+  --surface3:  #f1f5f9;
+  --border:    #e2e8f0;
+  --border2:   #cbd5e1;
+  --accent:    #10b981;
+  --accent2:   #059669;
   --accent-light: #e8f5ee;
-  --accent-glow: rgba(26,107,60,0.12);
-  --text:      #111a14;
-  --text-muted:#4a5e4e;
-  --text-dim:  #6b7d6e;
+  --accent-glow: rgba(16, 81, 185, 0.1);
+  --text:      #0f172a;
+  --text-muted:#475569;
+  --text-dim:  #94a3b8;
 
   --vacation:        #005b4f;
   --vacation-bg:     #b2dfdb;
@@ -37,9 +37,9 @@
   --note-bg:      #fef9c3;
   --note-border:  #fcd34d;
 
-  --radius: 10px;
-  --shadow: 0 4px 16px rgba(0,0,0,0.07);
-  --shadow-md: 0 8px 32px rgba(0,0,0,0.1);
+  --radius: 12px;
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 
   --font-display: 'Fraunces', serif;
   --font-body: 'DM Sans', system-ui, sans-serif;
@@ -50,7 +50,7 @@
 
 body {
   font-family: var(--font-body);
-  background: var(--bg2);
+  background: var(--bg);
   color: var(--text);
   min-height: 100dvh;
   height: 100dvh;
@@ -58,7 +58,7 @@ body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-image: url('img/boxed-bg.png');
+  background-image: url('img/boxed-bg.png'), radial-gradient(at 0% 0%, hsla(161,71%,95%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,95%,1) 0, transparent 50%);
   background-repeat: repeat;
   background-size: auto;
 }
@@ -85,10 +85,9 @@ body.loading {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--bg);
+  background: rgba(248, 250, 252, 0.8);
+  backdrop-filter: blur(12px);
   padding: 20px 24px 0;
-  background-image: 
-    radial-gradient(ellipse 120% 60% at 80% -20%, rgba(26,107,60,0.06) 0%, transparent 60%);
 }
 
 .sticky-top::after {
@@ -114,7 +113,7 @@ body.loading {
 }
 .header-title {
   font-family: var(--font-display);
-  font-size: 26px; 
+  font-size: 28px; 
   font-weight: 700; 
   letter-spacing: -0.02em;
   color: var(--text);
@@ -132,15 +131,17 @@ body.loading {
 .stats-bar {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
+  gap: 12px;
   margin-bottom: 0;
 }
 
 .stat-card {
-  background: var(--surface);
-  border-radius: 10px;
-  padding: 14px 12px 12px;
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--radius);
+  padding: 16px 12px;
+  border: 1px solid rgba(136, 136, 136, 0.3);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -160,8 +161,9 @@ body.loading {
 }
 
 .stat-card:hover { 
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  border-color: var(--border2);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  border: 1px solid rgba(136, 136, 136, 0.3);
   transform: translateY(-1px);
 }
 .stat-card:hover::before {
@@ -179,7 +181,7 @@ body.loading {
 }
 .stat-value {
   font-family: var(--font-mono);
-  font-size: 26px; 
+  font-size: 24px; 
   font-weight: 500; 
   color: var(--text); 
   line-height: 1;
@@ -216,8 +218,9 @@ body.loading {
 
 /* Status: Pflicht erfüllt → dezent grün */
 .stat-card.highlight.status-ok {
-  background: #f0faf3;
-  border-color: #86efac;
+  background: rgba(240, 250, 243, 0.6);
+  border-color: rgba(134, 239, 172, 0.5);
+  box-shadow: 0 0 15px rgba(74, 222, 128, 0.1);
 }
 .stat-card.highlight.status-ok::before {
   background: #4ade80;
@@ -232,8 +235,9 @@ body.loading {
 
 /* Status: Pflicht nicht erfüllt → dezent rot */
 .stat-card.highlight.status-warn {
-  background: #fff8f7;
-  border-color: #fca5a5;
+  background: rgba(255, 248, 247, 0.6);
+  border-color: rgba(252, 165, 165, 0.5);
+  box-shadow: 0 0 15px rgba(248, 113, 113, 0.1);
 }
 .stat-card.highlight.status-warn::before {
   background: #f87171;
@@ -260,13 +264,13 @@ body.loading {
 /* === CALENDAR === */
 .calendar-wrap {
   background: var(--surface);
-  border-radius: 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: var(--shadow);
 }
 
 .cal-header {
@@ -390,7 +394,7 @@ body.loading {
 .year-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
@@ -399,20 +403,20 @@ body.loading {
   flex-direction: column;
 }
 .year-card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 6px 24px rgba(26,107,60,0.12);
+  border-color: var(--accent2);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 .year-card.is-current-month {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(26,107,60,0.15);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 .year-card.is-past { opacity: 0.78; }
 
 .year-card-stripe {
   height: 4px;
   width: 100%;
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
   flex-shrink: 0;
 }
 .year-card-stripe.done    { background: linear-gradient(90deg, #15803d, #22c55e); }
@@ -555,7 +559,7 @@ body.loading {
   grid-template-columns: 42px 46px 1fr;
   height: 36px;
   min-height: 36px;
-  border-bottom: 1px solid #e8eee8;
+  border-bottom: 1px solid var(--border);
   align-items: center;
   position: relative;
   transition: background 0.12s, box-shadow 0.15s;
@@ -565,7 +569,7 @@ body.loading {
 .day-row:last-child { border-bottom: none; }
 
 .day-row.weekend { 
-  background: #f7f9f7; 
+  background: lab(97.53% -0.15 -0.61); 
   color: #9aab9a; 
 }
 .day-row.drag-over {
@@ -607,7 +611,7 @@ body.loading {
   font-family: var(--font-mono);
   font-size: 9px; 
   color: var(--text-dim);
-  border-right: 1px solid #e8eee8;
+  border-right: 1px solid var(--border);
   background: #f7f9f7 !important;
   height: 100%;
   letter-spacing: 0.02em;
@@ -619,7 +623,7 @@ body.loading {
 .day-cell {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 0 5px; gap: 1px;
-  border-right: 1px solid #e8eee8;
+  border-right: 1px solid var(--border);
   height: 100%;
 }
 .day-num-big {
@@ -802,7 +806,7 @@ body.loading {
 }
 .sidebar-card {
   background: var(--surface);
-  border-radius: 10px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.03);
