@@ -184,13 +184,99 @@ function isHoliday(dateStr) {
   return !!holidaysCache[year]?.[dateStr];
 }
 
+// ── Neue Validierungsfunktion für Drop-Zulässigkeit ────────────────────────────
+function canDropType(type, dateStr, noteOnly) {
+  // Notizen können überall hin
+  if (type === 'note') return true;
+  
+  // Wenn noteOnly=true, sind nur Notizen erlaubt
+  if (noteOnly) return false;
+  
+  // Für alle anderen Typen: erlaubt (office, vacation, sick, other)
+  return true;
+}
+
+// ── Toast-Benachrichtigung bei ungültigem Drop ───────────────────────────────────
+function showDropInvalidToast(type, dateStr) {
+  const TYPE_NAMES = {
+    'office': '🏢 Im Office',
+    'vacation': '🌴 Urlaub',
+    'sick': '😷 Krank',
+    'other': '📋 Sonstige Abwesenheit'
+  };
+  
+  const typeName = TYPE_NAMES[type] || type;
+  const msg = `⛔ ${typeName} kann hier nicht eingetragen werden`;
+  
+  // Bestehende Toast entfernen falls vorhanden
+  const existing = document.getElementById('drop-invalid-toast');
+  if (existing) existing.remove();
+  
+  const toast = document.createElement('div');
+  toast.id = 'drop-invalid-toast';
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 12px 20px;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideUp 0.3s ease-out;
+  `;
+  
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  
+  // Auto-remove nach 3 Sekunden
+  setTimeout(() => toast.remove(), 3000);
+}
+
 function addDropListeners(el, dateStr, noteOnly = false) {
-  el.addEventListener('dragover', e => { e.preventDefault(); el.closest('.day-row').classList.add('drag-over'); });
-  el.addEventListener('dragleave', () => el.closest('.day-row').classList.remove('drag-over'));
+  el.addEventListener('dragover', e => { 
+    e.preventDefault();
+    const type = e.dataTransfer.getData('type');
+    const isAllowed = canDropType(type, dateStr, noteOnly);
+    const dayRow = el.closest('.day-row');
+    
+    // Visual feedback: erlaubt vs. nicht erlaubt
+    if (isAllowed) {
+      dayRow.classList.add('drag-over');
+      dayRow.classList.remove('drag-over-invalid');
+      e.dataTransfer.dropEffect = 'copy';
+    } else {
+      dayRow.classList.add('drag-over-invalid');
+      dayRow.classList.remove('drag-over');
+      e.dataTransfer.dropEffect = 'none';
+    }
+  });
+  
+  el.addEventListener('dragleave', () => {
+    const dayRow = el.closest('.day-row');
+    dayRow.classList.remove('drag-over');
+    dayRow.classList.remove('drag-over-invalid');
+  });
+  
   el.addEventListener('drop', e => {
     e.preventDefault();
-    el.closest('.day-row').classList.remove('drag-over');
+    const dayRow = el.closest('.day-row');
+    dayRow.classList.remove('drag-over');
+    dayRow.classList.remove('drag-over-invalid');
+    
     const type = e.dataTransfer.getData('type');
+    
+    // Validierung: Darf dieser Typ hier landen?
+    if (!canDropType(type, dateStr, noteOnly)) {
+      showDropInvalidToast(type, dateStr);
+      return;
+    }
+    
     if (type === 'note') addNote(dateStr);
     else if (!noteOnly && type) addEntry(type, dateStr);
   });
