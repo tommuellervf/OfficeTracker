@@ -186,8 +186,11 @@ function isHoliday(dateStr) {
 
 // ── Neue Validierungsfunktion für Drop-Zulässigkeit ────────────────────────────
 function canDropType(type, dateStr, noteOnly) {
-  // Notizen können überall hin
-  if (type === 'note') return true;
+  // Notizen: Überall erlaubt, ABER nicht auf sich selbst (wenn schon Note existiert)
+  if (type === 'note') {
+    const hasNote = getNoteInfo(dateStr);
+    return !hasNote; // Nur erlaubt, wenn KEINE Note existiert
+  }
   
   // Wenn noteOnly=true, sind nur Notizen erlaubt
   if (noteOnly) return false;
