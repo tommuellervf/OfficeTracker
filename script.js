@@ -11,6 +11,7 @@ let holidayFetchPromises = {};
 let settings = {
   hoursPerWeek: 40,
   workDays: [1,2,3,4,5],
+  baseDaysOverride: null,  // ← NEU: null = automatisch, sonst fixe Zahl
   customHolidays: {},
   colors: {
     accent: '#2563eb',
@@ -43,7 +44,14 @@ const pad = n => String(n).padStart(2,'0');
 const mkDate = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
 
 // ── Vollzeit-Sonderregel: ab 35h immer 8 Tage, darunter proportional ────────
+// Kann durch baseDaysOverride überschrieben werden
 function calcBaseDays() {
+  // Wenn manuell überschrieben, verwende diesen Wert
+  if (settings.baseDaysOverride !== null && settings.baseDaysOverride > 0) {
+    return Math.round(settings.baseDaysOverride);
+  }
+  
+  // Sonst: automatische Berechnung
   return settings.hoursPerWeek >= 35 ? 8 : Math.round(settings.hoursPerWeek / 5);
 }
 
@@ -1426,6 +1434,8 @@ function initSettings() {
     switchPanel('work');
     requestAnimationFrame(() => modal.classList.add('visible'));
     document.getElementById('hours-per-week').value = settings.hoursPerWeek;
+    document.getElementById('base-days-override').value = 
+      settings.baseDaysOverride !== null ? settings.baseDaysOverride : '';
     settings.workDays.forEach(d => {
       const el = document.getElementById(`workday-${d}`);
       if (el) el.checked = true;
@@ -1448,6 +1458,13 @@ function initSettings() {
     const val = parseFloat(e.target.value) || 40;
     settings.hoursPerWeek = Math.max(1, Math.min(60, val));
     e.target.value = settings.hoursPerWeek;
+    saveData();
+    updateStats();
+  };
+
+  document.getElementById('base-days-override').onchange = e => {
+    const val = e.target.value.trim();
+    settings.baseDaysOverride = val === '' ? null : Math.max(0, parseInt(val) || 0);
     saveData();
     updateStats();
   };

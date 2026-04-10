@@ -1157,6 +1157,12 @@ select:focus-visible, button:focus-visible {
   box-shadow: 0 0 0 3px rgba(26,107,60,0.1);
 }
 
+/* Basis-Bürotage Feld - mit Placeholder-Styling */
+#base-days-override::placeholder {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
 .settings-btn-primary {
   padding: 8px 16px;
   background: var(--accent);

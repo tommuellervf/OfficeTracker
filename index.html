@@ -191,6 +191,10 @@
               <label for="hours-per-week">Stunden pro Woche</label>
               <input type="number" id="hours-per-week" min="1" max="60" step="0.5" class="settings-input-sm">
             </div>
+            <div class="setting-row">
+              <label for="base-days-override">Basis-Bürotage (0 = Automatisch)</label>
+                <input type="number" id="base-days-override" min="0" max="22" step="1" class="settings-input-sm" placeholder="0">
+              </div>
           </div>
         </div>
 
@@ -286,8 +290,8 @@
 
                 <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;">
                   <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">1) Grundpflicht (Basis-Bürotage)</div>
-                  <code style="font-size:12px;color:var(--accent);">Vollzeit (≥ 35h): immer 8 Tage</code>
-                  <div style="font-size:12px;color:var(--text-muted);margin:4px 0 6px;">Ab 35h Wochenarbeitszeit gilt Vollzeit – die Grundpflicht beträgt dann pauschal 8 Tage.</div>
+                  <code style="font-size:12px;color:var(--accent);">Vollzeit (≥ 35h): 8 Tage (oder benutzerdefiniert)</code>
+                  <div style="font-size:12px;color:var(--text-muted);margin:4px 0 6px;">Ab 35h Wochenarbeitszeit = 8 Tage Grundpflicht. Kann in den Einstellungen überschrieben werden (z.B. für Betreuungsfreistellungen).</div>
                   <code style="font-size:12px;color:var(--accent);">Teilzeit (&lt; 35h): 8 × (Wochenstunden / 40)</code>
                   <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Wird kaufmännisch gerundet. Beispiel: 20h → 4 Tage.</div>
                 </div>
