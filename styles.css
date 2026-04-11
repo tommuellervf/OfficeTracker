@@ -875,7 +875,7 @@ body.loading {
 .drag-chip.sick     { background: var(--sick-bg);     border-color: var(--sick-border);     color: var(--sick); }
 .drag-chip.office   { background: var(--office-bg);   border-color: var(--office-border);   color: var(--office); }
 .drag-chip.other    { background: var(--other-bg);    border-color: var(--other-border);    color: var(--other); }
-.drag-chip.note     { background: #fef9c3;             border-color: #fcd34d;                color: #713f12; }
+.drag-chip.note     { background: var(--note-bg);     border-color: var(--note-border);     color: var(--note); }
 .drag-chip:hover { 
   transform: translateX(2px); 
   filter: brightness(0.95);
